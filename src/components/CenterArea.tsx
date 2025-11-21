@@ -47,7 +47,22 @@ export const CenterArea: React.FC = () => {
                     You've mastered all the selected questions. Great job!
                     You can include mastered questions to keep practicing or select different topics.
                 </p>
-                <button onClick={restartQueue} className="btn-primary flex items-center gap-2">
+                <button
+                    onClick={() => {
+                        // If we are here, it means the queue is empty.
+                        // If includeMastered is false, we need to enable it to restart.
+                        if (!session.includeMastered) {
+                            if (confirm("All questions are mastered. Do you want to review them anyway?")) {
+                                useQuizStore.getState().setIncludeMastered(true);
+                                // We need to wait for state update or just force restart in next tick
+                                setTimeout(() => restartQueue(), 0);
+                            }
+                        } else {
+                            restartQueue();
+                        }
+                    }}
+                    className="btn-primary flex items-center gap-2"
+                >
                     <RotateCcw size={18} />
                     Start Over
                 </button>

@@ -150,6 +150,41 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                                     {result.explanation}
                                                 </p>
                                             )}
+                                            {!result.correct && (
+                                                <div className="mt-3 p-3 bg-white rounded-lg border border-red-100 text-sm">
+                                                    <span className="font-semibold text-red-800 block mb-1">Correct Answer:</span>
+                                                    <span className="text-slate-700 font-medium">
+                                                        {question.type === 'multiple_choice' && question.choices[question.answerIndex]}
+                                                        {question.type === 'multiple_answer' && question.answerIndices.map(i => question.choices[i]).join(', ')}
+                                                        {question.type === 'true_false' && (question.answer ? 'True' : 'False')}
+                                                        {question.type === 'short_answer' && (Array.isArray(question.answer) ? question.answer.join(' or ') : question.answer)}
+                                                        {question.type === 'matching' && (
+                                                            <ul className="list-disc pl-4 mt-1 space-y-1">
+                                                                {question.pairs.map((pair, i) => (
+                                                                    <li key={i}>
+                                                                        <span className="font-semibold">{pair.left}</span> → {pair.right}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                        {question.type === 'word_bank' && (
+                                                            question.sentence.split(/(_)/g).map((part, i) => {
+                                                                if (part === '_') {
+                                                                    // Find which answer corresponds to this blank
+                                                                    // The sentence is split by _, so every odd index is a blank
+                                                                    // e.g. "A _ B _" -> ["A ", "_", " B ", "_", ""]
+                                                                    // blanks are at indices 1, 3.
+                                                                    // The answer array corresponds to these blanks in order.
+                                                                    // blankIndex = (i - 1) / 2
+                                                                    const blankIndex = (i - 1) / 2;
+                                                                    return <span key={i} className="px-1.5 py-0.5 mx-0.5 bg-green-100 text-green-800 rounded font-bold">{question.answers[blankIndex]}</span>;
+                                                                }
+                                                                return <span key={i}>{part}</span>;
+                                                            })
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
