@@ -3,7 +3,8 @@ export type QuestionType =
     | 'short_answer'
     | 'true_false'
     | 'matching'
-    | 'word_bank';
+    | 'word_bank'
+    | 'multiple_answer';
 
 export interface BaseQuestion {
     id: string;
@@ -47,8 +48,15 @@ export interface WordBankQuestion extends BaseQuestion {
     answers: string[]; // Correct words for each blank in order
 }
 
+export interface MultipleAnswerQuestion extends BaseQuestion {
+    type: 'multiple_answer';
+    choices: string[];
+    answerIndices: number[]; // Indices of all correct answers
+}
+
 export type Question =
     | MultipleChoiceQuestion
+    | MultipleAnswerQuestion
     | ShortAnswerQuestion
     | TrueFalseQuestion
     | MatchingQuestion

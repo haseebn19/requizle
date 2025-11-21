@@ -62,6 +62,17 @@ export const checkAnswer = (question: Question, userAnswer: any): boolean => {
         case 'multiple_choice':
             return userAnswer === question.answerIndex;
 
+        case 'multiple_answer': {
+            // userAnswer is number[] (indices)
+            if (!Array.isArray(userAnswer)) return false;
+            // Check if lengths match and all selected indices are correct
+            // Sort both to ensure order doesn't matter
+            const sortedUser = [...userAnswer].sort((a, b) => a - b);
+            const sortedCorrect = [...question.answerIndices].sort((a, b) => a - b);
+            return sortedUser.length === sortedCorrect.length &&
+                sortedUser.every((val, index) => val === sortedCorrect[index]);
+        }
+
         case 'true_false':
             return userAnswer === question.answer;
 

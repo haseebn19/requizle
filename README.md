@@ -9,6 +9,7 @@ PulseRecall is a modern, single-page web application designed to help users stud
 - **Spaced Repetition**: Option to include or exclude mastered questions from the study queue.
 - **Multiple Question Types**:
   - Multiple Choice
+  - Multiple Answer
   - True/False
   - Short Answer
   - Matching
@@ -82,6 +83,15 @@ You can import a single subject object or an array of subjects.
             "choices": ["2", "3", "4", "5"],
             "answerIndex": 1,
             "explanation": "Subtract 4 from both sides to get 2x = 6, then divide by 2."
+          },
+          {
+            "id": "q1b",
+            "type": "multiple_answer",
+            "topicId": "algebra",
+            "prompt": "Which of these are prime numbers?",
+            "choices": ["2", "4", "5", "9"],
+            "answerIndices": [0, 2],
+            "explanation": "2 and 5 are prime. 4 and 9 are composite."
           },
           {
             "id": "q2",

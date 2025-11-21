@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import type {Question} from '../types';
 import {useQuizStore} from '../store/useQuizStore';
+import {MultipleAnswerInput} from './inputs/MultipleAnswerInput';
 import {MultipleChoiceInput} from './inputs/MultipleChoiceInput';
 import {TrueFalseInput} from './inputs/TrueFalseInput';
 import {ShortAnswerInput} from './inputs/ShortAnswerInput';
@@ -79,6 +80,14 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                     <div className="p-6 md:p-8 bg-white">
                         {question.type === 'multiple_choice' && (
                             <MultipleChoiceInput
+                                question={question}
+                                onAnswer={handleAnswer}
+                                disabled={!!submittedAnswer}
+                                submittedAnswer={submittedAnswer}
+                            />
+                        )}
+                        {question.type === 'multiple_answer' && (
+                            <MultipleAnswerInput
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}

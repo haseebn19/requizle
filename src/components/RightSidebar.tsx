@@ -138,6 +138,19 @@ export const RightSidebar: React.FC = () => {
                                     <Trash2 size={16} />
                                     Reset Subject Progress
                                 </button>
+
+                                <button
+                                    onClick={() => {
+                                        if (confirm('WARNING: This will delete ALL data, including custom subjects and progress. Are you sure?')) {
+                                            localStorage.removeItem('quiz-storage');
+                                            window.location.reload();
+                                        }
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 p-3 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors text-sm font-medium mt-2"
+                                >
+                                    <AlertCircle size={16} />
+                                    Reset All Data (Reload)
+                                </button>
                             </div>
                         </>
                     )}
