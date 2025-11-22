@@ -5,6 +5,7 @@ import type {Question, Subject, QuestionProgress} from '../types';
 describe('quizLogic', () => {
     describe('checkAnswer', () => {
         it('should return true for correct multiple choice answer', () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const question: any = {
                 id: '1',
                 type: 'multiple_choice',
@@ -18,6 +19,7 @@ describe('quizLogic', () => {
         });
 
         it('should return true for correct true/false answer', () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const question: any = {
                 id: '2',
                 type: 'true_false',
@@ -39,7 +41,9 @@ describe('quizLogic', () => {
                     id: 't1',
                     name: 'Topic 1',
                     questions: [
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         {id: 'q1', type: 'true_false', prompt: 'Q1', answer: true, explanation: ''} as any,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         {id: 'q2', type: 'true_false', prompt: 'Q2', answer: true, explanation: ''} as any
                     ]
                 },
@@ -47,6 +51,7 @@ describe('quizLogic', () => {
                     id: 't2',
                     name: 'Topic 2',
                     questions: [
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         {id: 'q3', type: 'true_false', prompt: 'Q3', answer: true, explanation: ''} as any
                     ]
                 }
@@ -68,8 +73,11 @@ describe('quizLogic', () => {
 
     describe('generateQueue', () => {
         const questions: Question[] = [
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {id: 'q1', type: 'true_false', prompt: 'Q1', answer: true, explanation: ''} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {id: 'q2', type: 'true_false', prompt: 'Q2', answer: true, explanation: ''} as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             {id: 'q3', type: 'true_false', prompt: 'Q3', answer: true, explanation: ''} as any
         ];
 

@@ -57,7 +57,7 @@ export const generateQueue = (
     return queue.map(q => q.id);
 };
 
-export const checkAnswer = (question: Question, userAnswer: any): boolean => {
+export const checkAnswer = (question: Question, userAnswer: unknown): boolean => {
     switch (question.type) {
         case 'multiple_choice':
             return userAnswer === question.answerIndex;

@@ -4,7 +4,7 @@ import {calculateMastery, getActiveQuestions} from '../utils/quizLogic';
 import {Upload, Trash2, AlertCircle, Download, Plus} from 'lucide-react';
 import {ThemeToggle} from './ThemeToggle';
 import {clsx} from 'clsx';
-import type {Subject} from '../types';
+import type {Subject, Question, QuestionType, Topic} from '../types';
 
 export const RightSidebar: React.FC = () => {
     const {
@@ -42,22 +42,190 @@ export const RightSidebar: React.FC = () => {
         subjectMastery = calculateMastery(allQuestions, flatProgress);
     }
 
-    const handleImport = () => {
-        try {
-            const parsed = JSON.parse(jsonInput);
-            const subjectsToImport = Array.isArray(parsed) ? parsed : [parsed];
+    // Comprehensive validation function
+    const validateSubjects = (data: unknown): Subject[] => {
+        if (!Array.isArray(data) && (typeof data !== 'object' || data === null)) {
+            throw new Error('Invalid format: Expected an object or array of subjects');
+        }
 
-            // Basic validation
-            if (!subjectsToImport.every((s: any) => s.id && s.topics)) {
-                throw new Error("Invalid format: Missing id or topics");
+        const subjectsToValidate = Array.isArray(data) ? data : [data];
+
+        const validQuestionTypes: QuestionType[] = [
+            'multiple_choice',
+            'multiple_answer',
+            'short_answer',
+            'true_false',
+            'matching',
+            'word_bank'
+        ];
+
+        const validateQuestion = (q: unknown, questionIndex: number, topicName: string): Question => {
+            if (typeof q !== 'object' || q === null) {
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Must be an object`);
             }
 
-            importSubjects(subjectsToImport as Subject[]);
+            const question = q as Record<string, unknown>;
+
+            // Validate base fields
+            if (typeof question.id !== 'string' || !question.id) {
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "id"`);
+            }
+            if (typeof question.type !== 'string' || !validQuestionTypes.includes(question.type as QuestionType)) {
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "type" (must be one of: ${validQuestionTypes.join(', ')})`);
+            }
+            if (typeof question.prompt !== 'string' || !question.prompt) {
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "prompt"`);
+            }
+            if (typeof question.topicId !== 'string' || !question.topicId) {
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "topicId"`);
+            }
+
+            const type = question.type as QuestionType;
+
+            // Validate type-specific fields
+            switch (type) {
+                case 'multiple_choice': {
+                    if (!Array.isArray(question.choices) || question.choices.length === 0) {
+                        throw new Error(`Invalid multiple_choice question "${question.id}": Missing or invalid "choices" array`);
+                    }
+                    if (typeof question.answerIndex !== 'number' || question.answerIndex < 0 || question.answerIndex >= question.choices.length) {
+                        throw new Error(`Invalid multiple_choice question "${question.id}": Missing or invalid "answerIndex"`);
+                    }
+                    break;
+                }
+
+                case 'multiple_answer': {
+                    if (!Array.isArray(question.choices) || question.choices.length === 0) {
+                        throw new Error(`Invalid multiple_answer question "${question.id}": Missing or invalid "choices" array`);
+                    }
+                    if (!Array.isArray(question.answerIndices) || question.answerIndices.length === 0) {
+                        throw new Error(`Invalid multiple_answer question "${question.id}": Missing or invalid "answerIndices" array`);
+                    }
+                    if (!question.answerIndices.every((idx: unknown) => typeof idx === 'number' && idx >= 0 && idx < question.choices.length)) {
+                        throw new Error(`Invalid multiple_answer question "${question.id}": "answerIndices" contains invalid values`);
+                    }
+                    break;
+                }
+
+                case 'true_false': {
+                    if (typeof question.answer !== 'boolean') {
+                        throw new Error(`Invalid true_false question "${question.id}": Missing or invalid "answer" (must be boolean)`);
+                    }
+                    break;
+                }
+
+                case 'short_answer': {
+                    if (typeof question.answer !== 'string' && !Array.isArray(question.answer)) {
+                        throw new Error(`Invalid short_answer question "${question.id}": Missing or invalid "answer" (must be string or array of strings)`);
+                    }
+                    if (Array.isArray(question.answer) && question.answer.length === 0) {
+                        throw new Error(`Invalid short_answer question "${question.id}": "answer" array cannot be empty`);
+                    }
+                    break;
+                }
+
+                case 'matching': {
+                    if (!Array.isArray(question.pairs) || question.pairs.length === 0) {
+                        throw new Error(`Invalid matching question "${question.id}": Missing or invalid "pairs" array`);
+                    }
+                    if (!question.pairs.every((pair: unknown) => 
+                        typeof pair === 'object' && 
+                        pair !== null && 
+                        typeof (pair as Record<string, unknown>).left === 'string' &&
+                        typeof (pair as Record<string, unknown>).right === 'string'
+                    )) {
+                        throw new Error(`Invalid matching question "${question.id}": "pairs" must be an array of objects with "left" and "right" strings`);
+                    }
+                    break;
+                }
+
+                case 'word_bank': {
+                    if (typeof question.sentence !== 'string' || !question.sentence) {
+                        throw new Error(`Invalid word_bank question "${question.id}": Missing or invalid "sentence"`);
+                    }
+                    if (!Array.isArray(question.wordBank) || question.wordBank.length === 0) {
+                        throw new Error(`Invalid word_bank question "${question.id}": Missing or invalid "wordBank" array`);
+                    }
+                    if (!Array.isArray(question.answers) || question.answers.length === 0) {
+                        throw new Error(`Invalid word_bank question "${question.id}": Missing or invalid "answers" array`);
+                    }
+                    const blankCount = (question.sentence as string).split('_').length - 1;
+                    if (question.answers.length !== blankCount) {
+                        throw new Error(`Invalid word_bank question "${question.id}": "answers" array length (${question.answers.length}) doesn't match number of blanks in sentence (${blankCount})`);
+                    }
+                    break;
+                }
+            }
+
+            return question as Question;
+        };
+
+        const validateTopic = (t: unknown, topicIndex: number, subjectName: string): Topic => {
+            if (typeof t !== 'object' || t === null) {
+                throw new Error(`Invalid topic ${topicIndex + 1} in subject "${subjectName}": Must be an object`);
+            }
+
+            const topic = t as Record<string, unknown>;
+
+            if (typeof topic.id !== 'string' || !topic.id) {
+                throw new Error(`Invalid topic ${topicIndex + 1} in subject "${subjectName}": Missing or invalid "id"`);
+            }
+            if (typeof topic.name !== 'string' || !topic.name) {
+                throw new Error(`Invalid topic ${topicIndex + 1} in subject "${subjectName}": Missing or invalid "name"`);
+            }
+            if (!Array.isArray(topic.questions)) {
+                throw new Error(`Invalid topic "${topic.name}": Missing or invalid "questions" array`);
+            }
+
+            const questions = topic.questions.map((q, idx) => validateQuestion(q, idx, topic.name as string));
+
+            return {
+                id: topic.id as string,
+                name: topic.name as string,
+                questions
+            };
+        };
+
+        const validateSubject = (s: unknown, subjectIndex: number): Subject => {
+            if (typeof s !== 'object' || s === null) {
+                throw new Error(`Invalid subject ${subjectIndex + 1}: Must be an object`);
+            }
+
+            const subject = s as Record<string, unknown>;
+
+            if (typeof subject.id !== 'string' || !subject.id) {
+                throw new Error(`Invalid subject ${subjectIndex + 1}: Missing or invalid "id"`);
+            }
+            if (typeof subject.name !== 'string' || !subject.name) {
+                throw new Error(`Invalid subject ${subjectIndex + 1}: Missing or invalid "name"`);
+            }
+            if (!Array.isArray(subject.topics)) {
+                throw new Error(`Invalid subject "${subject.name}": Missing or invalid "topics" array`);
+            }
+
+            const topics = subject.topics.map((t, idx) => validateTopic(t, idx, subject.name as string));
+
+            return {
+                id: subject.id as string,
+                name: subject.name as string,
+                topics
+            };
+        };
+
+        return subjectsToValidate.map((s, idx) => validateSubject(s, idx));
+    };
+
+    const handleImport = () => {
+        try {
+            const parsed: unknown = JSON.parse(jsonInput);
+            const validatedSubjects = validateSubjects(parsed);
+            importSubjects(validatedSubjects);
             setJsonInput('');
             setImportError(null);
             alert('Import successful!');
-        } catch (e: any) {
-            setImportError(e.message);
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+            setImportError(`Import failed: ${errorMessage}`);
         }
     };
 
@@ -69,12 +237,15 @@ export const RightSidebar: React.FC = () => {
         reader.onload = (event) => {
             try {
                 const content = event.target?.result as string;
-                const parsed = JSON.parse(content);
-                const subjectsToImport = Array.isArray(parsed) ? parsed : [parsed];
-                importSubjects(subjectsToImport as Subject[]);
+                const parsed: unknown = JSON.parse(content);
+                const validatedSubjects = validateSubjects(parsed);
+                importSubjects(validatedSubjects);
+                setJsonInput('');
+                setImportError(null);
                 alert('Import successful!');
-            } catch (e: any) {
-                setImportError("File import failed: " + e.message);
+            } catch (e) {
+                const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+                setImportError(`File import failed: ${errorMessage}`);
             }
         };
         reader.readAsText(file);
@@ -314,8 +485,8 @@ export const RightSidebar: React.FC = () => {
                                                 } else {
                                                     throw new Error("Invalid profile format");
                                                 }
-                                            } catch (err: any) {
-                                                alert("Failed to import profile: " + err.message);
+                                            } catch (err) {
+                                                alert("Failed to import profile: " + (err instanceof Error ? err.message : 'Unknown error'));
                                             }
                                         };
                                         reader.readAsText(file);

@@ -16,6 +16,7 @@ export const MatchingInput: React.FC<Props> = ({question, onAnswer, disabled, su
 
     useEffect(() => {
         if (submittedAnswer) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setMatches(submittedAnswer);
         }
     }, [submittedAnswer]);

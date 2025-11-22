@@ -10,7 +10,7 @@ vi.mock('../store/useQuizStore', () => ({
 
 // Mock sub-components to simplify testing
 vi.mock('./inputs/MultipleChoiceInput', () => ({
-    MultipleChoiceInput: ({onAnswer}: any) => (
+    MultipleChoiceInput: ({onAnswer}: {onAnswer: (answer: number) => void}) => (
         <button onClick={() => onAnswer(0)}>Select Option A</button>
     )
 }));
@@ -27,22 +27,24 @@ describe('QuestionCard', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (useQuizStore as any).mockReturnValue({
+        (useQuizStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
             submitAnswer: mockSubmitAnswer,
             skipQuestion: mockSkipQuestion
         });
-        (useQuizStore as any).getState = () => ({
+        (useQuizStore as unknown as {getState: () => {nextQuestion: () => void}}).getState = () => ({
             nextQuestion: mockNextQuestion
         });
     });
 
     it('should render question prompt', () => {
-        const question: any = {
+        const question = {
             id: '1',
-            type: 'multiple_choice',
+            topicId: 't1',
+            type: 'multiple_choice' as const,
             prompt: 'What is the capital of France?',
             choices: ['Paris', 'London'],
-            answerIndex: 0
+            answerIndex: 0,
+            explanation: ''
         };
 
         render(<QuestionCard question={question} />);
@@ -50,12 +52,14 @@ describe('QuestionCard', () => {
     });
 
     it('should handle answer submission', () => {
-        const question: any = {
+        const question = {
             id: '1',
-            type: 'multiple_choice',
+            topicId: 't1',
+            type: 'multiple_choice' as const,
             prompt: 'Q1',
             choices: ['A', 'B'],
-            answerIndex: 0
+            answerIndex: 0,
+            explanation: ''
         };
 
         mockSubmitAnswer.mockReturnValue({correct: true});
@@ -69,12 +73,14 @@ describe('QuestionCard', () => {
     });
 
     it('should handle skipping', () => {
-        const question: any = {
+        const question = {
             id: '1',
-            type: 'multiple_choice',
+            topicId: 't1',
+            type: 'multiple_choice' as const,
             prompt: 'Q1',
             choices: ['A', 'B'],
-            answerIndex: 0
+            answerIndex: 0,
+            explanation: ''
         };
 
         render(<QuestionCard question={question} />);

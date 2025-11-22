@@ -5,9 +5,10 @@ import {RightSidebar} from './components/RightSidebar';
 import {CenterArea} from './components/CenterArea';
 import {useQuizStore} from './store/useQuizStore';
 import {ThemeProvider} from './context/ThemeContext';
+import type {Subject} from './types';
 
 // Sample data for initial load if empty
-const SAMPLE_SUBJECTS = [
+const SAMPLE_SUBJECTS: Subject[] = [
   {
     id: 'feature-showcase',
     name: 'PulseRecall Features',
@@ -85,9 +86,9 @@ function App() {
   useEffect(() => {
     // Load sample data if no subjects exist (first run)
     if (subjects.length === 0) {
-      setSubjects(SAMPLE_SUBJECTS as any);
+      setSubjects(SAMPLE_SUBJECTS);
     }
-  }, []);
+  }, [subjects.length, setSubjects]);
 
   return (
     <ThemeProvider>

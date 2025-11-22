@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import type {Question} from '../types';
 import {useQuizStore} from '../store/useQuizStore';
 import {MultipleAnswerInput} from './inputs/MultipleAnswerInput';
@@ -15,18 +15,25 @@ interface Props {
     question: Question;
 }
 
+type AnswerType = number | number[] | boolean | string | Record<string, string> | string[];
+
 export const QuestionCard: React.FC<Props> = ({question}) => {
     const {submitAnswer, skipQuestion} = useQuizStore();
-    const [submittedAnswer, setSubmittedAnswer] = useState<any>(null);
+    const [submittedAnswer, setSubmittedAnswer] = useState<AnswerType | null>(null);
     const [result, setResult] = useState<{correct: boolean; explanation?: string} | null>(null);
+    const prevQuestionIdRef = useRef<string>(question.id);
 
     // Reset state when question changes
     useEffect(() => {
-        setSubmittedAnswer(null);
-        setResult(null);
+        if (prevQuestionIdRef.current !== question.id) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setSubmittedAnswer(null);
+            setResult(null);
+            prevQuestionIdRef.current = question.id;
+        }
     }, [question.id]);
 
-    const handleAnswer = (answer: any) => {
+    const handleAnswer = (answer: AnswerType) => {
         setSubmittedAnswer(answer);
         const res = submitAnswer(answer);
         setResult(res);

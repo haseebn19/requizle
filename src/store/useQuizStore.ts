@@ -1,6 +1,6 @@
 import {create} from 'zustand';
-import {persist, createJSONStorage} from 'zustand/middleware';
-import type {Subject, ProgressMap, SessionState, StudyMode, QuestionProgress, Profile} from '../types';
+import {persist} from 'zustand/middleware';
+import type {Subject, SessionState, StudyMode, QuestionProgress, Profile} from '../types';
 import {generateQueue, getActiveQuestions, checkAnswer} from '../utils/quizLogic';
 import {v4 as uuidv4} from 'uuid';
 
@@ -18,7 +18,7 @@ interface QuizState {
     setIncludeMastered: (include: boolean) => void;
     restartQueue: () => void;
 
-    submitAnswer: (answer: any) => {correct: boolean; explanation?: string};
+    submitAnswer: (answer: unknown) => {correct: boolean; explanation?: string};
     skipQuestion: () => void;
     nextQuestion: () => void;
 
@@ -319,7 +319,7 @@ export const useQuizStore = create<QuizState>()(
                     };
 
                     // Queue management
-                    let newQueue = [...currentProfile.session.queue];
+                    const newQueue = [...currentProfile.session.queue];
 
                     if (!isCorrect) {
                         // Reinsert 4-6 positions later
@@ -413,7 +413,7 @@ export const useQuizStore = create<QuizState>()(
                         }
                     };
 
-                    let newQueue = [...currentProfile.session.queue];
+                    const newQueue = [...currentProfile.session.queue];
                     const offset = Math.floor(Math.random() * 3) + 4;
                     const insertIndex = Math.min(offset, newQueue.length);
                     newQueue.splice(insertIndex, 0, currentQuestionId);
@@ -567,6 +567,7 @@ export const useQuizStore = create<QuizState>()(
         {
             name: 'quiz-storage',
             version: 1,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             migrate: (persistedState: any, version: number) => {
                 if (version === 0 || version === undefined) {
                     // Migrate from version 0 (flat state) to version 1 (profiles)
@@ -589,9 +590,11 @@ export const useQuizStore = create<QuizState>()(
                     return {
                         profiles: {[DEFAULT_PROFILE_ID]: defaultProfile},
                         activeProfileId: DEFAULT_PROFILE_ID
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } as any;
                 }
-                return persistedState as QuizState;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return persistedState as any as QuizState;
             }
         }
     )

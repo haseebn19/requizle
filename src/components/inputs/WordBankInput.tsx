@@ -18,6 +18,7 @@ export const WordBankInput: React.FC<Props> = ({question, onAnswer, disabled, su
 
     useEffect(() => {
         if (submittedAnswer) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFilledSlots(submittedAnswer);
             // Re-calculate available words
             const used = submittedAnswer.filter(Boolean) as string[];
@@ -28,7 +29,7 @@ export const WordBankInput: React.FC<Props> = ({question, onAnswer, disabled, su
             });
             setAvailableWords(remaining);
         }
-    }, [submittedAnswer]);
+    }, [submittedAnswer, question.wordBank]);
 
     const handleWordClick = (word: string) => {
         if (disabled) return;

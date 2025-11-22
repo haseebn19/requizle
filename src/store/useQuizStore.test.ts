@@ -3,8 +3,17 @@ import {useQuizStore} from './useQuizStore';
 import {act} from 'react';
 
 // Mock persistence to avoid localStorage issues in tests
+type ZustandSet<T> = (partial: T | Partial<T> | ((state: T) => T | Partial<T>), replace?: boolean) => void;
+type ZustandGet<T> = () => T;
+type ZustandApi<T> = {
+    setState: ZustandSet<T>;
+    getState: ZustandGet<T>;
+    destroy: () => void;
+};
+
 vi.mock('zustand/middleware', () => ({
-    persist: (config: any) => (set: any, get: any, api: any) => config(set, get, api),
+    persist: <T,>(config: (set: ZustandSet<T>, get: ZustandGet<T>, api: ZustandApi<T>) => T) => 
+        (set: ZustandSet<T>, get: ZustandGet<T>, api: ZustandApi<T>) => config(set, get, api),
     createJSONStorage: () => ({})
 }));
 

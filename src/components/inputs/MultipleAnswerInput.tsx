@@ -16,6 +16,7 @@ export const MultipleAnswerInput: React.FC<Props> = ({question, onAnswer, disabl
 
     useEffect(() => {
         if (submittedAnswer) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setSelectedIndices(submittedAnswer);
         }
     }, [submittedAnswer]);
