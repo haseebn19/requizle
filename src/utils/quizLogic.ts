@@ -90,7 +90,8 @@ export const checkAnswer = (question: Question, userAnswer: unknown): boolean =>
         case 'matching': {
             // userAnswer is Record<left, right>
             if (!userAnswer || typeof userAnswer !== 'object') return false;
-            return question.pairs.every(pair => userAnswer[pair.left] === pair.right);
+            const answers = userAnswer as Record<string, string>;
+            return question.pairs.every(pair => answers[pair.left] === pair.right);
         }
 
         case 'word_bank': {

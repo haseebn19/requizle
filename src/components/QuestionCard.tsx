@@ -90,7 +90,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}
-                                submittedAnswer={submittedAnswer}
+                                submittedAnswer={submittedAnswer as number | null}
                             />
                         )}
                         {question.type === 'multiple_answer' && (
@@ -98,7 +98,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}
-                                submittedAnswer={submittedAnswer}
+                                submittedAnswer={submittedAnswer as number[] | null}
                             />
                         )}
                         {question.type === 'true_false' && (
@@ -106,7 +106,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}
-                                submittedAnswer={submittedAnswer}
+                                submittedAnswer={submittedAnswer as boolean | null}
                             />
                         )}
                         {question.type === 'short_answer' && (
@@ -114,7 +114,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}
-                                submittedAnswer={submittedAnswer}
+                                submittedAnswer={submittedAnswer as string | null}
                             />
                         )}
                         {question.type === 'matching' && (
@@ -122,7 +122,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}
-                                submittedAnswer={submittedAnswer}
+                                submittedAnswer={submittedAnswer as Record<string, string> | null}
                             />
                         )}
                         {question.type === 'word_bank' && (
@@ -130,7 +130,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}
-                                submittedAnswer={submittedAnswer}
+                                submittedAnswer={submittedAnswer as string[] | null}
                             />
                         )}
                     </div>

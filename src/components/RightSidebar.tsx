@@ -101,7 +101,7 @@ export const RightSidebar: React.FC = () => {
                     if (!Array.isArray(question.answerIndices) || question.answerIndices.length === 0) {
                         throw new Error(`Invalid multiple_answer question "${question.id}": Missing or invalid "answerIndices" array`);
                     }
-                    if (!question.answerIndices.every((idx: unknown) => typeof idx === 'number' && idx >= 0 && idx < question.choices.length)) {
+                    if (!question.answerIndices.every((idx: unknown) => typeof idx === 'number' && idx >= 0 && idx < (question.choices as unknown[]).length)) {
                         throw new Error(`Invalid multiple_answer question "${question.id}": "answerIndices" contains invalid values`);
                     }
                     break;
@@ -128,9 +128,9 @@ export const RightSidebar: React.FC = () => {
                     if (!Array.isArray(question.pairs) || question.pairs.length === 0) {
                         throw new Error(`Invalid matching question "${question.id}": Missing or invalid "pairs" array`);
                     }
-                    if (!question.pairs.every((pair: unknown) => 
-                        typeof pair === 'object' && 
-                        pair !== null && 
+                    if (!question.pairs.every((pair: unknown) =>
+                        typeof pair === 'object' &&
+                        pair !== null &&
                         typeof (pair as Record<string, unknown>).left === 'string' &&
                         typeof (pair as Record<string, unknown>).right === 'string'
                     )) {
@@ -157,7 +157,7 @@ export const RightSidebar: React.FC = () => {
                 }
             }
 
-            return question as Question;
+            return question as unknown as Question;
         };
 
         const validateTopic = (t: unknown, topicIndex: number, subjectName: string): Topic => {
