@@ -1,29 +1,29 @@
-# PulseRecall
+# ReQuizle
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
-A modern, single-page web application designed to help users study efficiently through spaced repetition and active recall. PulseRecall features a distraction-free interface, comprehensive mastery tracking, and support for multiple question types.
+A modern, single-page web application designed to help users study efficiently through spaced repetition and active recall. ReQuizle features a distraction-free interface, comprehensive mastery tracking, and support for multiple question types.
 
-## ✨ Features
+## Features
 
-- **🎯 Focused Study Experience**: Clean, distraction-free UI with smooth animations
-- **📊 Mastery Tracking**: Track progress and mastery percentage for each subject and topic
-- **🔄 Spaced Repetition**: Option to include or exclude mastered questions from the study queue
-- **📝 Multiple Question Types**:
+- **Focused Study Experience**: Clean, distraction-free UI with smooth animations
+- **Mastery Tracking**: Track progress and mastery percentage for each subject and topic
+- **Spaced Repetition**: Option to include or exclude mastered questions from the study queue
+- **Multiple Question Types**:
   - Multiple Choice
   - Multiple Answer
   - True/False
   - Short Answer
   - Matching (with randomized right-side options)
   - Word Bank
-- **💾 Data Persistence**: Progress automatically saved to local storage
-- **📥 Custom Content Import**: Import your own subjects and questions via JSON
-- **🌓 Dark Mode**: Built-in theme toggle for comfortable studying
-- **👤 Profile Management**: Create and manage multiple study profiles
-- **📱 Responsive Design**: Works seamlessly on desktop and mobile devices
-- **🎨 Collapsible Sidebars**: Toggle sidebars for a focused study experience
+- **Data Persistence**: Progress automatically saved to local storage
+- **Custom Content Import**: Import your own subjects and questions via JSON
+- **Dark Mode**: Built-in theme toggle for comfortable studying
+- **Profile Management**: Create and manage multiple study profiles
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Collapsible Sidebars**: Toggle sidebars for a focused study experience
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Framework**: React 19 + Vite
 - **Language**: TypeScript
@@ -33,12 +33,12 @@ A modern, single-page web application designed to help users study efficiently t
 - **Icons**: Lucide React
 - **Testing**: Vitest
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Node.js (v16 or higher)
 - npm or yarn
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Installation
 
@@ -92,7 +92,7 @@ Check code quality:
 npm run lint
 ```
 
-## 📖 Usage
+## Usage
 
 ### Starting a Study Session
 
@@ -208,7 +208,7 @@ You can import a single subject object or an array of subjects:
 - Fill in blanks in a sentence
 - Requires `sentence` (with `_` for blanks), `wordBank` array, and `answers` array
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 QuizTool/
@@ -226,20 +226,20 @@ QuizTool/
 └── ...
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📄 License
+## License
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). See the [LICENSE](LICENSE) file for details.
 
-## 🔗 Links
+## Links
 
 - **Live Demo**: [https://haseebn19.github.io/QuizTool](https://haseebn19.github.io/QuizTool)
 - **Repository**: [https://github.com/haseebn19/QuizTool](https://github.com/haseebn19/QuizTool)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with [React](https://react.dev/)
 - Styled with [TailwindCSS](https://tailwindcss.com/)

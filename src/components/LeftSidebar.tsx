@@ -19,7 +19,7 @@ export const LeftSidebar: React.FC = () => {
                     <span className="p-2 bg-indigo-600 rounded-lg text-white">
                         <BookOpen size={24} />
                     </span>
-                    PulseRecall
+                    ReQuizle
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Master your subjects</p>
             </div>
