@@ -10,9 +10,25 @@ interface Props {
     submittedAnswer: Record<string, string> | null;
 }
 
+// Fisher-Yates shuffle function
+const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+};
+
 export const MatchingInput: React.FC<Props> = ({question, onAnswer, disabled, submittedAnswer}) => {
     const [matches, setMatches] = useState<Record<string, string>>({});
     const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+    
+    // Shuffle the right side items for display
+    const [shuffledRightItems, setShuffledRightItems] = useState<string[]>(() => {
+        const rightItems = question.pairs.map(pair => pair.right);
+        return shuffleArray(rightItems);
+    });
 
     useEffect(() => {
         if (submittedAnswer) {
@@ -20,6 +36,15 @@ export const MatchingInput: React.FC<Props> = ({question, onAnswer, disabled, su
             setMatches(submittedAnswer);
         }
     }, [submittedAnswer]);
+    
+    // Reset shuffle when question changes
+    useEffect(() => {
+        const rightItems = question.pairs.map(pair => pair.right);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShuffledRightItems(shuffleArray(rightItems));
+        setMatches({});
+        setSelectedLeft(null);
+    }, [question.id, question.pairs]);
 
     const handleLeftClick = (leftId: string) => {
         if (disabled) return;
@@ -80,15 +105,15 @@ export const MatchingInput: React.FC<Props> = ({question, onAnswer, disabled, su
                 {/* Right Column */}
                 <div className="space-y-3">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Matches</h3>
-                    {question.pairs.map((pair) => {
+                    {shuffledRightItems.map((rightItem) => {
                         // Find which left item is matched to this right item
-                        const matchedLeft = Object.keys(matches).find(key => matches[key] === pair.right);
+                        const matchedLeft = Object.keys(matches).find(key => matches[key] === rightItem);
                         const isMatched = !!matchedLeft;
 
                         return (
                             <motion.button
-                                key={pair.right}
-                                onClick={() => handleRightClick(pair.right)}
+                                key={rightItem}
+                                onClick={() => handleRightClick(rightItem)}
                                 disabled={disabled || (!!matchedLeft && disabled)} // Allow clicking if not disabled (logic handled in function)
                                 className={clsx(
                                     "w-full p-4 rounded-xl border-2 text-left text-sm font-medium transition-all relative",
@@ -97,7 +122,7 @@ export const MatchingInput: React.FC<Props> = ({question, onAnswer, disabled, su
                                             "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700/50 text-slate-400 dark:text-slate-600 cursor-default"
                                 )}
                             >
-                                {pair.right}
+                                {rightItem}
                                 {matchedLeft && (
                                     <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white dark:border-slate-800 shadow-sm">
                                         {question.pairs.findIndex(p => p.left === matchedLeft) + 1}
