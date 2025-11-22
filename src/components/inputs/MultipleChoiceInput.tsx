@@ -29,17 +29,24 @@ export const MultipleChoiceInput: React.FC<Props> = ({question, onAnswer, disabl
                     }
                 }
 
+                const isDisabled = disabled || submittedAnswer !== null;
+
                 return (
                     <motion.button
                         key={index}
                         initial={{opacity: 0, y: 10}}
                         animate={{opacity: 1, y: 0}}
                         transition={{delay: index * 0.1}}
-                        onClick={() => !disabled && onAnswer(index)}
-                        disabled={disabled}
+                        onClick={() => {
+                            if (!isDisabled) {
+                                onAnswer(index);
+                            }
+                        }}
+                        disabled={isDisabled}
                         className={clsx(
                             "w-full text-left p-4 rounded-xl border-2 font-medium transition-all duration-200",
-                            stateClass
+                            stateClass,
+                            isDisabled && "cursor-not-allowed"
                         )}
                     >
                         <div className="flex items-center gap-3">

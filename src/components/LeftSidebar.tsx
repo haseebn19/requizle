@@ -99,11 +99,11 @@ export const LeftSidebar: React.FC = () => {
                                     <div className={clsx("flex-shrink-0", isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-300 dark:text-slate-600")}>
                                         {isSelected ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                                     </div>
-                                    <div className="flex-1 text-left">
+                                    <div className="flex-1 min-w-0 text-left">
                                         <div className={clsx("font-medium truncate", isSelected ? "text-slate-700 dark:text-slate-200" : "text-slate-500 dark:text-slate-400")}>
                                             {topic.name}
                                         </div>
-                                        <div className="w-full bg-slate-100 h-1 mt-1.5 rounded-full overflow-hidden">
+                                        <div className="w-full bg-slate-100 dark:bg-slate-700 h-1 mt-1.5 rounded-full overflow-hidden">
                                             <div
                                                 className="bg-green-500 h-full rounded-full transition-all duration-500"
                                                 style={{width: `${masteryPct}%`}}

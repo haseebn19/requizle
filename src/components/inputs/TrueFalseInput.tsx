@@ -36,17 +36,23 @@ export const TrueFalseInput: React.FC<Props> = ({question, onAnswer, disabled, s
                 }
 
                 const Icon = option.icon;
+                const isDisabled = disabled || submittedAnswer !== null;
 
                 return (
                     <motion.button
                         key={String(option.value)}
-                        whileHover={!disabled ? {scale: 1.02} : {}}
-                        whileTap={!disabled ? {scale: 0.98} : {}}
-                        onClick={() => !disabled && onAnswer(option.value)}
-                        disabled={disabled}
+                        whileHover={!isDisabled ? {scale: 1.02} : {}}
+                        whileTap={!isDisabled ? {scale: 0.98} : {}}
+                        onClick={() => {
+                            if (!isDisabled) {
+                                onAnswer(option.value);
+                            }
+                        }}
+                        disabled={isDisabled}
                         className={clsx(
                             "flex flex-col items-center justify-center p-8 rounded-xl border-2 font-bold text-lg transition-all duration-200 gap-3",
-                            stateClass
+                            stateClass,
+                            isDisabled && "cursor-not-allowed"
                         )}
                     >
                         <div className={clsx(
