@@ -94,3 +94,12 @@ export interface SessionState {
     queue: string[]; // question IDs
     currentQuestionId: string | null;
 }
+
+export interface Profile {
+    id: string;
+    name: string;
+    subjects: Subject[];
+    progress: ProgressMap;
+    session: SessionState;
+    createdAt: number;
+}

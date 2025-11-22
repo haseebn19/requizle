@@ -79,7 +79,8 @@ const SAMPLE_SUBJECTS = [
 ];
 
 function App() {
-  const {subjects, setSubjects} = useQuizStore();
+  const {profiles, activeProfileId, setSubjects} = useQuizStore();
+  const subjects = profiles[activeProfileId]?.subjects || [];
 
   useEffect(() => {
     // Load sample data if no subjects exist (first run)

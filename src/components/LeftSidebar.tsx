@@ -5,7 +5,9 @@ import {CheckCircle2, Circle, BookOpen} from 'lucide-react';
 import {clsx} from 'clsx';
 
 export const LeftSidebar: React.FC = () => {
-    const {subjects, progress, session, startSession, toggleTopic, setIncludeMastered} = useQuizStore();
+    const {profiles, activeProfileId, startSession, toggleTopic, setIncludeMastered} = useQuizStore();
+    const activeProfile = profiles[activeProfileId];
+    const {subjects, progress, session} = activeProfile;
 
     const currentSubject = subjects.find(s => s.id === session.subjectId);
 

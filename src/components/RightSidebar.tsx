@@ -1,17 +1,29 @@
 import React, {useState} from 'react';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery, getActiveQuestions} from '../utils/quizLogic';
-import {Upload, Trash2, AlertCircle} from 'lucide-react';
+import {Upload, Trash2, AlertCircle, Download, Plus} from 'lucide-react';
 import {ThemeToggle} from './ThemeToggle';
 import {clsx} from 'clsx';
 import type {Subject} from '../types';
 
 export const RightSidebar: React.FC = () => {
-    const {subjects, progress, session, importSubjects, resetSubjectProgress} = useQuizStore();
+    const {
+        profiles,
+        activeProfileId,
+        createProfile,
+        switchProfile,
+        deleteProfile,
+        importProfile,
+        resetAllData,
+        importSubjects,
+        resetSubjectProgress
+    } = useQuizStore();
     const [activeTab, setActiveTab] = useState<'mastery' | 'import' | 'settings'>('mastery');
     const [jsonInput, setJsonInput] = useState('');
     const [importError, setImportError] = useState<string | null>(null);
 
+    const currentProfile = profiles[activeProfileId];
+    const {subjects, progress, session} = currentProfile;
     const currentSubject = subjects.find(s => s.id === session.subjectId);
 
     // Calculate stats
@@ -191,6 +203,131 @@ export const RightSidebar: React.FC = () => {
 
             {activeTab === 'settings' && (
                 <div className="space-y-6 animate-in fade-in duration-300">
+                    {/* Profiles */}
+                    <div className="space-y-3">
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Profiles</h3>
+
+                        <div className="space-y-2">
+                            {Object.values(profiles).sort((a, b) => b.createdAt - a.createdAt).map(profile => (
+                                <div
+                                    key={profile.id}
+                                    className={clsx(
+                                        "p-3 rounded-lg border transition-all",
+                                        activeProfileId === profile.id
+                                            ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800"
+                                            : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-700"
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className={clsx(
+                                                "font-medium text-sm",
+                                                activeProfileId === profile.id ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-200"
+                                            )}>
+                                                {profile.name}
+                                            </span>
+                                            {activeProfileId === profile.id && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 font-bold uppercase">
+                                                    Active
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(profile));
+                                                    const downloadAnchorNode = document.createElement('a');
+                                                    downloadAnchorNode.setAttribute("href", dataStr);
+                                                    downloadAnchorNode.setAttribute("download", `quiz-profile-${profile.name.toLowerCase().replace(/\s+/g, '-')}.json`);
+                                                    document.body.appendChild(downloadAnchorNode);
+                                                    downloadAnchorNode.click();
+                                                    downloadAnchorNode.remove();
+                                                }}
+                                                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                                                title="Export Profile"
+                                            >
+                                                <Download size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const isLastProfile = Object.keys(profiles).length === 1;
+                                                    const message = isLastProfile
+                                                        ? "This is the last profile. Deleting it will reset the app to a default state. Are you sure?"
+                                                        : `Are you sure you want to delete profile "${profile.name}"?`;
+
+                                                    if (confirm(message)) {
+                                                        deleteProfile(profile.id);
+                                                    }
+                                                }}
+                                                className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                                title="Delete Profile"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                                        <span>{profile.subjects.length} Subjects</span>
+                                        {activeProfileId !== profile.id && (
+                                            <button
+                                                onClick={() => switchProfile(profile.id)}
+                                                className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+                                            >
+                                                Switch to this profile
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                            <button
+                                onClick={() => {
+                                    const name = prompt("Enter profile name:");
+                                    if (name) createProfile(name);
+                                }}
+                                className="flex items-center justify-center gap-2 p-2 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-xs font-medium"
+                            >
+                                <Plus size={14} />
+                                New Profile
+                            </button>
+                            <label className="flex items-center justify-center gap-2 p-2 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-xs font-medium cursor-pointer">
+                                <Upload size={14} />
+                                Import Profile
+                                <input
+                                    type="file"
+                                    accept=".json"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        const reader = new FileReader();
+                                        reader.onload = (event) => {
+                                            try {
+                                                const content = event.target?.result as string;
+                                                const parsed = JSON.parse(content);
+                                                if (parsed.id && parsed.name && Array.isArray(parsed.subjects)) {
+                                                    importProfile(parsed);
+                                                    alert(`Profile "${parsed.name}" imported successfully!`);
+                                                } else {
+                                                    throw new Error("Invalid profile format");
+                                                }
+                                            } catch (err: any) {
+                                                alert("Failed to import profile: " + err.message);
+                                            }
+                                        };
+                                        reader.readAsText(file);
+                                        e.target.value = ''; // Reset input
+                                    }}
+                                />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 dark:border-slate-700 my-4"></div>
+
                     {/* Appearance */}
                     <div className="space-y-3">
                         <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Appearance</h3>
@@ -220,15 +357,14 @@ export const RightSidebar: React.FC = () => {
 
                         <button
                             onClick={() => {
-                                if (confirm('WARNING: This will delete ALL data, including custom subjects and progress. Are you sure?')) {
-                                    localStorage.removeItem('quiz-storage');
-                                    window.location.reload();
+                                if (confirm('WARNING: This will wipe ALL application data and reset to a fresh state. This cannot be undone. Are you sure?')) {
+                                    resetAllData();
                                 }
                             }}
                             className="w-full flex items-center justify-center gap-2 p-3 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium"
                         >
                             <AlertCircle size={16} />
-                            Reset All Data (Reload)
+                            Wipe All Data (Factory Reset)
                         </button>
                     </div>
                 </div>

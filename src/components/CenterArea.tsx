@@ -5,7 +5,9 @@ import {Shuffle, ListOrdered, RotateCcw, CheckCircle2} from 'lucide-react';
 
 
 export const CenterArea: React.FC = () => {
-    const {subjects, session, setMode, restartQueue} = useQuizStore();
+    const {profiles, activeProfileId, setMode, restartQueue} = useQuizStore();
+    const activeProfile = profiles[activeProfileId];
+    const {subjects, session} = activeProfile;
 
     const currentSubject = subjects.find(s => s.id === session.subjectId);
 
