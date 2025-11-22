@@ -8,7 +8,7 @@ import type {Subject} from '../types';
 
 export const RightSidebar: React.FC = () => {
     const {subjects, progress, session, importSubjects, resetSubjectProgress} = useQuizStore();
-    const [activeTab, setActiveTab] = useState<'mastery' | 'import'>('mastery');
+    const [activeTab, setActiveTab] = useState<'mastery' | 'import' | 'settings'>('mastery');
     const [jsonInput, setJsonInput] = useState('');
     const [importError, setImportError] = useState<string | null>(null);
 
@@ -90,6 +90,15 @@ export const RightSidebar: React.FC = () => {
                 >
                     Import
                 </button>
+                <button
+                    onClick={() => setActiveTab('settings')}
+                    className={clsx(
+                        "flex-1 py-1.5 text-sm font-medium rounded-md transition-all",
+                        activeTab === 'settings' ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                    )}
+                >
+                    Settings
+                </button>
             </div>
 
             {activeTab === 'mastery' && (
@@ -123,38 +132,6 @@ export const RightSidebar: React.FC = () => {
                                     <span>Active Questions:</span>
                                     <span className="font-medium text-slate-900 dark:text-slate-200">{activeQuestionsCount}</span>
                                 </div>
-                            </div>
-
-                            {/* Tools */}
-                            <div className="pt-6 border-t border-slate-100 dark:border-slate-700">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tools</h3>
-                                    <ThemeToggle />
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        if (confirm('Are you sure you want to reset progress for this subject?')) {
-                                            resetSubjectProgress(currentSubject.id);
-                                        }
-                                    }}
-                                    className="w-full flex items-center justify-center gap-2 p-3 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors text-sm font-medium"
-                                >
-                                    <Trash2 size={16} />
-                                    Reset Subject Progress
-                                </button>
-
-                                <button
-                                    onClick={() => {
-                                        if (confirm('WARNING: This will delete ALL data, including custom subjects and progress. Are you sure?')) {
-                                            localStorage.removeItem('quiz-storage');
-                                            window.location.reload();
-                                        }
-                                    }}
-                                    className="w-full flex items-center justify-center gap-2 p-3 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium mt-2"
-                                >
-                                    <AlertCircle size={16} />
-                                    Reset All Data (Reload)
-                                </button>
                             </div>
                         </>
                     )}
@@ -209,6 +186,51 @@ export const RightSidebar: React.FC = () => {
                             {importError}
                         </div>
                     )}
+                </div>
+            )}
+
+            {activeTab === 'settings' && (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                    {/* Appearance */}
+                    <div className="space-y-3">
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Appearance</h3>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Theme</span>
+                            <ThemeToggle />
+                        </div>
+                    </div>
+
+                    {/* Data Management */}
+                    <div className="space-y-3">
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Data Management</h3>
+
+                        {currentSubject && (
+                            <button
+                                onClick={() => {
+                                    if (confirm('Are you sure you want to reset progress for this subject?')) {
+                                        resetSubjectProgress(currentSubject.id);
+                                    }
+                                }}
+                                className="w-full flex items-center justify-center gap-2 p-3 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors text-sm font-medium"
+                            >
+                                <Trash2 size={16} />
+                                Reset Subject Progress
+                            </button>
+                        )}
+
+                        <button
+                            onClick={() => {
+                                if (confirm('WARNING: This will delete ALL data, including custom subjects and progress. Are you sure?')) {
+                                    localStorage.removeItem('quiz-storage');
+                                    window.location.reload();
+                                }
+                            }}
+                            className="w-full flex items-center justify-center gap-2 p-3 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium"
+                        >
+                            <AlertCircle size={16} />
+                            Reset All Data (Reload)
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
