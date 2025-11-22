@@ -77,7 +77,7 @@ export const useQuizStore = create<QuizState>()(
             activeProfileId: DEFAULT_PROFILE_ID,
 
             setSubjects: (subjects) => set((state) => {
-                const profile = state.profiles[state.activeProfileId];
+                const profile = getCurrentProfile(state);
                 return {
                     profiles: {
                         ...state.profiles,
@@ -90,7 +90,7 @@ export const useQuizStore = create<QuizState>()(
             }),
 
             importSubjects: (newSubjects) => set((state) => {
-                const profile = state.profiles[state.activeProfileId];
+                const profile = getCurrentProfile(state);
                 return {
                     profiles: {
                         ...state.profiles,
@@ -104,7 +104,7 @@ export const useQuizStore = create<QuizState>()(
 
             startSession: (subjectId) => {
                 set((state) => {
-                    const profile = state.profiles[state.activeProfileId];
+                    const profile = getCurrentProfile(state);
                     const subject = profile.subjects.find(s => s.id === subjectId);
                     if (!subject) return state;
 
@@ -142,14 +142,14 @@ export const useQuizStore = create<QuizState>()(
 
             toggleTopic: (topicId) => {
                 set((state) => {
-                    const profile = state.profiles[state.activeProfileId];
+                    const profile = getCurrentProfile(state);
                     const currentSelected = profile.session.selectedTopicIds;
                     const newSelected = currentSelected.includes(topicId)
                         ? currentSelected.filter(id => id !== topicId)
                         : [...currentSelected, topicId];
 
                     // Rebuild queue
-                    const subject = profile.subjects.find(s => s.id === profile.session.subjectId);
+                    const subject = getCurrentSubject(state);
                     if (!subject) return state;
 
                     const questions = getActiveQuestions(subject, newSelected);
@@ -179,8 +179,8 @@ export const useQuizStore = create<QuizState>()(
 
             setMode: (mode) => {
                 set((state) => {
-                    const profile = state.profiles[state.activeProfileId];
-                    const subject = profile.subjects.find(s => s.id === profile.session.subjectId);
+                    const profile = getCurrentProfile(state);
+                    const subject = getCurrentSubject(state);
 
                     if (!subject) {
                         return {
@@ -221,7 +221,7 @@ export const useQuizStore = create<QuizState>()(
 
             setIncludeMastered: (include) => {
                 set((state) => {
-                    const profile = state.profiles[state.activeProfileId];
+                    const profile = getCurrentProfile(state);
                     return {
                         profiles: {
                             ...state.profiles,
@@ -236,8 +236,8 @@ export const useQuizStore = create<QuizState>()(
 
             restartQueue: () => {
                 set((state) => {
-                    const profile = state.profiles[state.activeProfileId];
-                    const subject = profile.subjects.find(s => s.id === profile.session.subjectId);
+                    const profile = getCurrentProfile(state);
+                    const subject = getCurrentSubject(state);
                     if (!subject) return state;
 
                     const questions = getActiveQuestions(subject, profile.session.selectedTopicIds);
@@ -266,8 +266,8 @@ export const useQuizStore = create<QuizState>()(
 
             submitAnswer: (answer) => {
                 const state = get();
-                const profile = state.profiles[state.activeProfileId];
-                const subject = profile.subjects.find(s => s.id === profile.session.subjectId);
+                const profile = getCurrentProfile(state);
+                const subject = getCurrentSubject(state);
                 const {currentQuestionId} = profile.session;
 
                 if (!subject || !currentQuestionId) return {correct: false};
@@ -348,7 +348,7 @@ export const useQuizStore = create<QuizState>()(
 
             nextQuestion: () => {
                 set((state) => {
-                    const profile = state.profiles[state.activeProfileId];
+                    const profile = getCurrentProfile(state);
                     const newQueue = [...profile.session.queue];
                     const nextQuestionId = newQueue.shift() || null;
 
@@ -370,8 +370,8 @@ export const useQuizStore = create<QuizState>()(
 
             skipQuestion: () => {
                 const state = get();
-                const profile = state.profiles[state.activeProfileId];
-                const subject = profile.subjects.find(s => s.id === profile.session.subjectId);
+                const profile = getCurrentProfile(state);
+                const subject = getCurrentSubject(state);
                 const {currentQuestionId} = profile.session;
                 if (!subject || !currentQuestionId) return;
 
@@ -439,7 +439,7 @@ export const useQuizStore = create<QuizState>()(
 
             resetSubjectProgress: (subjectId) => {
                 set((state) => {
-                    const profile = state.profiles[state.activeProfileId];
+                    const profile = getCurrentProfile(state);
                     const newProgress = {...profile.progress};
                     delete newProgress[subjectId];
 
