@@ -54,30 +54,30 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                     animate={{opacity: 1, y: 0}}
                     exit={{opacity: 0, y: -20}}
                     transition={{duration: 0.3}}
-                    className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden"
+                    className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
                 >
                     {/* Header / Prompt */}
-                    <div className="p-6 md:p-8 border-b border-slate-100 bg-gradient-to-b from-white to-slate-50/50">
+                    <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-700 bg-gradient-to-b from-white to-slate-50/50 dark:from-slate-800 dark:to-slate-900/50">
                         <div className="flex justify-between items-start gap-4 mb-4">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
                                 {question.type.replace('_', ' ').toUpperCase()}
                             </span>
                             {!submittedAnswer && (
                                 <button
                                     onClick={handleSkip}
-                                    className="text-slate-400 hover:text-slate-600 text-sm flex items-center gap-1 transition-colors"
+                                    className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 text-sm flex items-center gap-1 transition-colors"
                                 >
                                     Skip <SkipForward size={14} />
                                 </button>
                             )}
                         </div>
-                        <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-relaxed">
+                        <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-relaxed">
                             {question.prompt}
                         </h2>
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-6 md:p-8 bg-white">
+                    <div className="p-6 md:p-8 bg-white dark:bg-slate-800">
                         {question.type === 'multiple_choice' && (
                             <MultipleChoiceInput
                                 question={question}
@@ -134,26 +134,26 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                             <motion.div
                                 initial={{height: 0, opacity: 0}}
                                 animate={{height: 'auto', opacity: 1}}
-                                className={`border-t ${result.correct ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}
+                                className={`border-t ${result.correct ? 'bg-green-50 border-green-100 dark:bg-green-900/20 dark:border-green-900/30' : 'bg-red-50 border-red-100 dark:bg-red-900/20 dark:border-red-900/30'}`}
                             >
                                 <div className="p-6">
                                     <div className="flex items-start gap-4">
-                                        <div className={`p-2 rounded-full ${result.correct ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                        <div className={`p-2 rounded-full ${result.correct ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'}`}>
                                             {result.correct ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
                                         </div>
                                         <div className="flex-1">
-                                            <h3 className={`text-lg font-bold ${result.correct ? 'text-green-800' : 'text-red-800'}`}>
+                                            <h3 className={`text-lg font-bold ${result.correct ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>
                                                 {result.correct ? 'Correct!' : 'Not quite right'}
                                             </h3>
                                             {result.explanation && (
-                                                <p className="mt-2 text-slate-600 leading-relaxed">
+                                                <p className="mt-2 text-slate-600 dark:text-slate-300 leading-relaxed">
                                                     {result.explanation}
                                                 </p>
                                             )}
                                             {!result.correct && (
-                                                <div className="mt-3 p-3 bg-white rounded-lg border border-red-100 text-sm">
-                                                    <span className="font-semibold text-red-800 block mb-1">Correct Answer:</span>
-                                                    <span className="text-slate-700 font-medium">
+                                                <div className="mt-3 p-3 bg-white dark:bg-slate-900/50 rounded-lg border border-red-100 dark:border-red-900/30 text-sm">
+                                                    <span className="font-semibold text-red-800 dark:text-red-300 block mb-1">Correct Answer:</span>
+                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">
                                                         {question.type === 'multiple_choice' && question.choices[question.answerIndex]}
                                                         {question.type === 'multiple_answer' && question.answerIndices.map(i => question.choices[i]).join(', ')}
                                                         {question.type === 'true_false' && (question.answer ? 'True' : 'False')}

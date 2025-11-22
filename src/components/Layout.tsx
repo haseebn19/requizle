@@ -9,7 +9,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({leftSidebar, center, rightSidebar}) => {
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row overflow-hidden">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col lg:flex-row overflow-hidden">
             {/* Background Effects */}
             <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-0 -left-4 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
@@ -18,7 +18,7 @@ export const Layout: React.FC<LayoutProps> = ({leftSidebar, center, rightSidebar
             </div>
 
             {/* Left Sidebar */}
-            <aside className="w-full lg:w-80 bg-white/80 backdrop-blur-md border-r border-slate-200 z-10 flex-shrink-0 h-[30vh] lg:h-screen overflow-y-auto">
+            <aside className="w-full lg:w-80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-r border-slate-200 dark:border-slate-700 z-10 flex-shrink-0 h-[30vh] lg:h-screen overflow-y-auto">
                 {leftSidebar}
             </aside>
 
@@ -28,7 +28,7 @@ export const Layout: React.FC<LayoutProps> = ({leftSidebar, center, rightSidebar
             </main>
 
             {/* Right Sidebar */}
-            <aside className="w-full lg:w-80 bg-white/80 backdrop-blur-md border-l border-slate-200 z-10 flex-shrink-0 h-[30vh] lg:h-screen overflow-y-auto">
+            <aside className="w-full lg:w-80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-l border-slate-200 dark:border-slate-700 z-10 flex-shrink-0 h-[30vh] lg:h-screen overflow-y-auto">
                 {rightSidebar}
             </aside>
         </div>

@@ -4,6 +4,7 @@ import {LeftSidebar} from './components/LeftSidebar';
 import {RightSidebar} from './components/RightSidebar';
 import {CenterArea} from './components/CenterArea';
 import {useQuizStore} from './store/useQuizStore';
+import {ThemeProvider} from './context/ThemeContext';
 
 // Sample data for initial load if empty
 const SAMPLE_SUBJECTS = [
@@ -88,11 +89,13 @@ function App() {
   }, []);
 
   return (
-    <Layout
-      leftSidebar={<LeftSidebar />}
-      center={<CenterArea />}
-      rightSidebar={<RightSidebar />}
-    />
+    <ThemeProvider>
+      <Layout
+        leftSidebar={<LeftSidebar />}
+        center={<CenterArea />}
+        rightSidebar={<RightSidebar />}
+      />
+    </ThemeProvider>
   );
 }
 
