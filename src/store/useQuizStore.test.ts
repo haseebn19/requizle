@@ -354,15 +354,12 @@ describe('useQuizStore', () => {
         });
 
         it('should regenerate the queue', () => {
-            // Store initial state reference
             useQuizStore.getState();
 
-            // Move to next question
             act(() => {
                 useQuizStore.getState().nextQuestion();
             });
 
-            // Restart
             act(() => {
                 useQuizStore.getState().restartQueue();
             });
@@ -432,16 +429,14 @@ describe('useQuizStore', () => {
         });
 
         it('should update progress after correct answer', () => {
-            // Get initial state
             useQuizStore.getState();
 
             act(() => {
-                useQuizStore.getState().submitAnswer(true); // Assuming it's a true/false
+                useQuizStore.getState().submitAnswer(true);
             });
 
             const newState = useQuizStore.getState();
             const progress = newState.profiles['default'].progress;
-            // Check that progress was recorded
             expect(Object.keys(progress).length).toBeGreaterThan(0);
         });
 
@@ -543,7 +538,6 @@ describe('useQuizStore', () => {
         });
 
         it('should update progress (reset streak)', () => {
-            // Get initial state reference
             useQuizStore.getState();
 
             act(() => {
@@ -551,7 +545,6 @@ describe('useQuizStore', () => {
             });
 
             const stateAfter = useQuizStore.getState();
-            // Progress should be recorded with streak = 0
             const progress = stateAfter.profiles['default'].progress;
             expect(Object.keys(progress).length).toBeGreaterThan(0);
         });
