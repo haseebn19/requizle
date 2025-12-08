@@ -2,6 +2,7 @@ import React, {useState, useEffect, useRef} from 'react';
 import {ChevronLeft, ChevronRight, PanelLeft, PanelRight, Menu, X} from 'lucide-react';
 import {motion, AnimatePresence} from 'framer-motion';
 import {clsx} from 'clsx';
+import {Logo} from './Logo';
 
 interface LayoutProps {
     leftSidebar: React.ReactNode;
@@ -72,9 +73,12 @@ export const Layout: React.FC<LayoutProps> = ({leftSidebar, center, rightSidebar
                         {leftSidebarVisible ? <X size={20} /> : <Menu size={20} />}
                     </button>
 
-                    <h1 className="text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                        ReQuizle
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <Logo size={28} />
+                        <span className="text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                            ReQuizle
+                        </span>
+                    </div>
 
                     <button
                         onClick={() => {

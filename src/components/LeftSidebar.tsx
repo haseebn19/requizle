@@ -1,8 +1,9 @@
 import React from 'react';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery} from '../utils/quizLogic';
-import {CheckCircle2, Circle, BookOpen} from 'lucide-react';
+import {CheckCircle2, Circle} from 'lucide-react';
 import {clsx} from 'clsx';
+import {Logo} from './Logo';
 
 export const LeftSidebar: React.FC = () => {
     const {profiles, activeProfileId, startSession, toggleTopic, setIncludeMastered} = useQuizStore();
@@ -16,9 +17,7 @@ export const LeftSidebar: React.FC = () => {
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="p-2 bg-indigo-600 rounded-lg text-white">
-                        <BookOpen size={24} />
-                    </span>
+                    <Logo size={40} />
                     ReQuizle
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Master your subjects</p>
