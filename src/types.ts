@@ -1,6 +1,6 @@
 export type QuestionType =
     | 'multiple_choice'
-    | 'short_answer'
+    | 'keywords'
     | 'true_false'
     | 'matching'
     | 'word_bank'
@@ -20,8 +20,8 @@ export interface MultipleChoiceQuestion extends BaseQuestion {
     answerIndex: number;
 }
 
-export interface ShortAnswerQuestion extends BaseQuestion {
-    type: 'short_answer';
+export interface KeywordsQuestion extends BaseQuestion {
+    type: 'keywords';
     answer: string | string[];
     caseSensitive?: boolean;
 }
@@ -57,7 +57,7 @@ export interface MultipleAnswerQuestion extends BaseQuestion {
 export type Question =
     | MultipleChoiceQuestion
     | MultipleAnswerQuestion
-    | ShortAnswerQuestion
+    | KeywordsQuestion
     | TrueFalseQuestion
     | MatchingQuestion
     | WordBankQuestion;
@@ -93,4 +93,13 @@ export interface SessionState {
     includeMastered: boolean;
     queue: string[]; // question IDs
     currentQuestionId: string | null;
+}
+
+export interface Profile {
+    id: string;
+    name: string;
+    subjects: Subject[];
+    progress: ProgressMap;
+    session: SessionState;
+    createdAt: number;
 }

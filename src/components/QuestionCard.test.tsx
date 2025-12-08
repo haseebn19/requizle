@@ -1,0 +1,324 @@
+import {describe, it, expect, vi, beforeEach} from 'vitest';
+import {render, screen, fireEvent} from '@testing-library/react';
+import {QuestionCard} from './QuestionCard';
+import {useQuizStore} from '../store/useQuizStore';
+
+// Mock the store
+vi.mock('../store/useQuizStore', () => ({
+    useQuizStore: vi.fn()
+}));
+
+// Mock sub-components to simplify testing
+vi.mock('./inputs/MultipleChoiceInput', () => ({
+    MultipleChoiceInput: ({onAnswer}: {onAnswer: (answer: number) => void}) => (
+        <button onClick={() => onAnswer(0)}>Select Option A</button>
+    )
+}));
+
+vi.mock('./inputs/TrueFalseInput', () => ({
+    TrueFalseInput: ({onAnswer}: {onAnswer: (answer: boolean) => void}) => (
+        <div>
+            <button onClick={() => onAnswer(true)}>Select True</button>
+            <button onClick={() => onAnswer(false)}>Select False</button>
+        </div>
+    )
+}));
+
+vi.mock('./inputs/MultipleAnswerInput', () => ({
+    MultipleAnswerInput: ({onAnswer}: {onAnswer: (answer: number[]) => void}) => (
+        <button onClick={() => onAnswer([0, 2])}>Submit MA</button>
+    )
+}));
+
+vi.mock('./inputs/KeywordsInput', () => ({
+    KeywordsInput: ({onAnswer}: {onAnswer: (answer: string) => void}) => (
+        <button onClick={() => onAnswer('Paris')}>Submit KW</button>
+    )
+}));
+
+vi.mock('./inputs/MatchingInput', () => ({
+    MatchingInput: ({onAnswer}: {onAnswer: (answer: Record<string, string>) => void}) => (
+        <button onClick={() => onAnswer({'A': '1'})}>Submit Match</button>
+    )
+}));
+
+vi.mock('./inputs/WordBankInput', () => ({
+    WordBankInput: ({onAnswer}: {onAnswer: (answer: string[]) => void}) => (
+        <button onClick={() => onAnswer(['sky', 'blue'])}>Submit Word Bank</button>
+    )
+}));
+
+// Mock confetti
+vi.mock('canvas-confetti', () => ({
+    default: vi.fn()
+}));
+
+describe('QuestionCard', () => {
+    const mockSubmitAnswer = vi.fn();
+    const mockSkipQuestion = vi.fn();
+    const mockNextQuestion = vi.fn();
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        (useQuizStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+            submitAnswer: mockSubmitAnswer,
+            skipQuestion: mockSkipQuestion
+        });
+        (useQuizStore as unknown as {getState: () => {nextQuestion: () => void}}).getState = () => ({
+            nextQuestion: mockNextQuestion
+        });
+    });
+
+    describe('rendering', () => {
+        it('should render question prompt', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'What is the capital of France?',
+                choices: ['Paris', 'London'],
+                answerIndex: 0,
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('What is the capital of France?')).toBeInTheDocument();
+        });
+
+        it('should render question type badge', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('MULTIPLE CHOICE')).toBeInTheDocument();
+        });
+
+        it('should render skip button', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('Skip')).toBeInTheDocument();
+        });
+    });
+
+    describe('multiple_choice questions', () => {
+        it('should handle correct answer submission', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: ''
+            };
+
+            mockSubmitAnswer.mockReturnValue({correct: true});
+
+            render(<QuestionCard question={question} />);
+            fireEvent.click(screen.getByText('Select Option A'));
+
+            expect(mockSubmitAnswer).toHaveBeenCalledWith(0);
+            expect(screen.getByText('Correct!')).toBeInTheDocument();
+        });
+
+        it('should handle incorrect answer and show correct answer', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 1,
+                explanation: 'The correct answer is B'
+            };
+
+            mockSubmitAnswer.mockReturnValue({correct: false, explanation: 'The correct answer is B'});
+
+            render(<QuestionCard question={question} />);
+            fireEvent.click(screen.getByText('Select Option A'));
+
+            expect(screen.getByText('Not quite right')).toBeInTheDocument();
+            expect(screen.getByText('The correct answer is B')).toBeInTheDocument();
+            expect(screen.getByText('Correct Answer:')).toBeInTheDocument();
+        });
+    });
+
+    describe('true_false questions', () => {
+        it('should render true/false input for true_false questions', () => {
+            const question = {
+                id: '2',
+                topicId: 't1',
+                type: 'true_false' as const,
+                prompt: 'The sky is blue.',
+                answer: true,
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('Select True')).toBeInTheDocument();
+            expect(screen.getByText('Select False')).toBeInTheDocument();
+        });
+
+        it('should handle true_false answer submission', () => {
+            const question = {
+                id: '2',
+                topicId: 't1',
+                type: 'true_false' as const,
+                prompt: 'The sky is blue.',
+                answer: true,
+                explanation: ''
+            };
+
+            mockSubmitAnswer.mockReturnValue({correct: true});
+
+            render(<QuestionCard question={question} />);
+            fireEvent.click(screen.getByText('Select True'));
+
+            expect(mockSubmitAnswer).toHaveBeenCalledWith(true);
+            expect(screen.getByText('Correct!')).toBeInTheDocument();
+        });
+    });
+
+    describe('multiple_answer questions', () => {
+        it('should render multiple answer input', () => {
+            const question = {
+                id: '3',
+                topicId: 't1',
+                type: 'multiple_answer' as const,
+                prompt: 'Select all fruits',
+                choices: ['Apple', 'Car', 'Banana'],
+                answerIndices: [0, 2],
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('Submit MA')).toBeInTheDocument();
+        });
+    });
+
+    describe('keywords questions', () => {
+        it('should render keywords input', () => {
+            const question = {
+                id: '4',
+                topicId: 't1',
+                type: 'keywords' as const,
+                prompt: 'What is the capital of France?',
+                answer: 'Paris',
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('Submit KW')).toBeInTheDocument();
+        });
+    });
+
+    describe('matching questions', () => {
+        it('should render matching input', () => {
+            const question = {
+                id: '5',
+                topicId: 't1',
+                type: 'matching' as const,
+                prompt: 'Match the items',
+                pairs: [{left: 'A', right: '1'}],
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('Submit Match')).toBeInTheDocument();
+        });
+    });
+
+    describe('word_bank questions', () => {
+        it('should render word bank input', () => {
+            const question = {
+                id: '6',
+                topicId: 't1',
+                type: 'word_bank' as const,
+                prompt: 'Fill in the blanks',
+                sentence: 'The _ is _',
+                wordBank: ['sky', 'blue'],
+                answers: ['sky', 'blue'],
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            expect(screen.getByText('Submit Word Bank')).toBeInTheDocument();
+        });
+    });
+
+    describe('skip functionality', () => {
+        it('should call skipQuestion when skip button is clicked', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: ''
+            };
+
+            render(<QuestionCard question={question} />);
+            fireEvent.click(screen.getByText('Skip'));
+
+            expect(mockSkipQuestion).toHaveBeenCalled();
+        });
+    });
+
+    describe('continue to next question', () => {
+        it('should show continue button after answering', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: ''
+            };
+
+            mockSubmitAnswer.mockReturnValue({correct: true});
+
+            render(<QuestionCard question={question} />);
+            fireEvent.click(screen.getByText('Select Option A'));
+
+            expect(screen.getByText(/Continue/)).toBeInTheDocument();
+        });
+
+        it('should call nextQuestion when continue is clicked', () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: ''
+            };
+
+            mockSubmitAnswer.mockReturnValue({correct: true});
+
+            render(<QuestionCard question={question} />);
+            fireEvent.click(screen.getByText('Select Option A'));
+            fireEvent.click(screen.getByText(/Continue/));
+
+            expect(mockNextQuestion).toHaveBeenCalled();
+        });
+    });
+});

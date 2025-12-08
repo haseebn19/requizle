@@ -1,15 +1,32 @@
+/*
+ * ReQuizle - A spaced repetition study tool
+ * Copyright (C) 2025 ReQuizle
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ */
+
 import {useEffect} from 'react';
 import {Layout} from './components/Layout';
 import {LeftSidebar} from './components/LeftSidebar';
 import {RightSidebar} from './components/RightSidebar';
 import {CenterArea} from './components/CenterArea';
 import {useQuizStore} from './store/useQuizStore';
+import {ThemeProvider} from './context/ThemeContext';
+import type {Subject} from './types';
 
 // Sample data for initial load if empty
-const SAMPLE_SUBJECTS = [
+const SAMPLE_SUBJECTS: Subject[] = [
   {
     id: 'feature-showcase',
-    name: 'PulseRecall Features',
+    name: 'ReQuizle Features',
     topics: [
       {
         id: 'all-types',
@@ -43,7 +60,7 @@ const SAMPLE_SUBJECTS = [
           },
           {
             id: 'q-sa',
-            type: 'short_answer',
+            type: 'keywords',
             topicId: 'all-types',
             prompt: 'What is the capital of France?',
             answer: 'Paris',
@@ -78,21 +95,24 @@ const SAMPLE_SUBJECTS = [
 ];
 
 function App() {
-  const {subjects, setSubjects} = useQuizStore();
+  const {profiles, activeProfileId, setSubjects} = useQuizStore();
+  const subjects = profiles[activeProfileId]?.subjects || [];
 
   useEffect(() => {
     // Load sample data if no subjects exist (first run)
     if (subjects.length === 0) {
-      setSubjects(SAMPLE_SUBJECTS as any);
+      setSubjects(SAMPLE_SUBJECTS);
     }
-  }, []);
+  }, [subjects.length, setSubjects]);
 
   return (
-    <Layout
-      leftSidebar={<LeftSidebar />}
-      center={<CenterArea />}
-      rightSidebar={<RightSidebar />}
-    />
+    <ThemeProvider>
+      <Layout
+        leftSidebar={<LeftSidebar />}
+        center={<CenterArea />}
+        rightSidebar={<RightSidebar />}
+      />
+    </ThemeProvider>
   );
 }
 

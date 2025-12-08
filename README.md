@@ -1,139 +1,117 @@
-# PulseRecall
+# ReQuizle
 
-PulseRecall is a modern, single-page web application designed to help users study efficiently through spaced repetition and active recall. It features a distraction-free interface, mastery tracking, and support for various question types.
+<img src="public/icon.svg" alt="ReQuizle Logo" width="250">
+
+ReQuizle is a modern web application designed to help users study efficiently through spaced repetition and active recall.
 
 ## Features
 
-- **Focused Study**: Distraction-free UI with smooth animations.
-- **Mastery Tracking**: Tracks your progress and mastery percentage for each subject and topic.
+- **Focused Study Experience**: Clean, distraction-free UI with smooth animations.
+- **Mastery Tracking**: Track progress and mastery percentage for each subject and topic.
 - **Spaced Repetition**: Option to include or exclude mastered questions from the study queue.
-- **Multiple Question Types**:
+- **Multiple Question Types**: Support for various question formats:
   - Multiple Choice
   - Multiple Answer
   - True/False
-  - Short Answer
+  - Keywords
   - Matching
   - Word Bank
-- **Data Persistence**: Progress is automatically saved to local storage.
-- **Custom Content**: Import your own subjects and questions via JSON.
+- **Data Persistence**: Progress automatically saved to local storage.
+- **Custom Content Import**: Import your own subjects and questions via JSON.
+- **Profile Management**: Create and manage multiple study profiles.
+- **Dark Mode**: Built-in theme toggle for comfortable studying.
+- **Responsive Design**: Works seamlessly on desktop and mobile devices.
+- **Privacy-Focused**: All data is stored locally in your browser - no server required.
 
-## Tech Stack
+## Prerequisites
 
-- **Framework**: React 19 + Vite
-- **Language**: TypeScript
-- **Styling**: TailwindCSS v3
-- **State Management**: Zustand (with persistence)
-- **Animations**: Framer Motion + Canvas Confetti
-- **Icons**: Lucide React
+- Node.js 18.x or higher
+- npm (Node Package Manager)
+- A modern web browser
 
-## Getting Started
+## Installation
 
-### Prerequisites
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/haseebn19/QuizTool.git
+   ```
 
-- Node.js (v16 or higher)
-- npm
+2. Navigate to the project directory:
+   ```bash
+   cd QuizTool
+   ```
 
-### Installation
-
-1. Clone the repository (if applicable) or navigate to the project directory.
-2. Install dependencies:
+3. Install the required dependencies:
    ```bash
    npm install
    ```
 
-### Running the App
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-Start the development server:
-```bash
-npm run dev
-```
-Open your browser and navigate to `http://localhost:5173` (or the URL shown in the terminal).
+## Usage
 
-### Building for Production
+1. **Select a Subject**:
+   - Choose a subject from the left sidebar
+   - Select specific topics or study all
 
-Build the application for deployment:
+2. **Answer Questions**:
+   - Questions appear one at a time in the center
+   - Submit your answer or skip to come back later
+   - Incorrect questions are automatically re-queued
+
+3. **Track Progress**:
+   - View mastery percentage for each subject and topic
+   - Toggle "Include Mastered" to review completed questions
+
+4. **Import Custom Content**:
+   - Use the Import tab in the right sidebar
+   - Upload JSON files with your own subjects and questions
+
+## Building for Production
+
+To create a production build:
 ```bash
 npm run build
 ```
-The output will be in the `dist` directory.
 
-## Customizing Content (JSON Import)
+The build files will be created in the `dist` directory.
 
-You can import your own subjects and questions using the "Import" tab in the right sidebar.
+## Testing
 
-### JSON Format
-
-You can import a single subject object or an array of subjects.
-
-```json
-[
-  {
-    "id": "math-101",
-    "name": "Mathematics 101",
-    "topics": [
-      {
-        "id": "algebra",
-        "name": "Algebra Basics",
-        "questions": [
-          {
-            "id": "q1",
-            "type": "multiple_choice",
-            "topicId": "algebra",
-            "prompt": "Solve for x: 2x + 4 = 10",
-            "choices": ["2", "3", "4", "5"],
-            "answerIndex": 1,
-            "explanation": "Subtract 4 from both sides to get 2x = 6, then divide by 2."
-          },
-          {
-            "id": "q1b",
-            "type": "multiple_answer",
-            "topicId": "algebra",
-            "prompt": "Which of these are prime numbers?",
-            "choices": ["2", "4", "5", "9"],
-            "answerIndices": [0, 2],
-            "explanation": "2 and 5 are prime. 4 and 9 are composite."
-          },
-          {
-            "id": "q2",
-            "type": "true_false",
-            "topicId": "algebra",
-            "prompt": "A negative times a negative is a positive.",
-            "answer": true
-          },
-          {
-            "id": "q3",
-            "type": "short_answer",
-            "topicId": "algebra",
-            "prompt": "What is the coefficient in 5x?",
-            "answer": "5",
-            "caseSensitive": false
-          },
-          {
-            "id": "q4",
-            "type": "matching",
-            "topicId": "algebra",
-            "prompt": "Match the terms",
-            "pairs": [
-              { "left": "x + x", "right": "2x" },
-              { "left": "x * x", "right": "x^2" }
-            ]
-          },
-          {
-            "id": "q5",
-            "type": "word_bank",
-            "topicId": "algebra",
-            "prompt": "Fill in the blanks",
-            "sentence": "The _ is the top number of a fraction.",
-            "wordBank": ["numerator", "denominator", "quotient"],
-            "answers": ["numerator"]
-          }
-        ]
-      }
-    ]
-  }
-]
+Run the test suite:
+```bash
+npm test
 ```
+
+Run tests with coverage report:
+```bash
+npm run test:coverage
+```
+
+## Contributing
+
+If you'd like to contribute to ReQuizle or have suggestions for improvements, please fork the repository and create a pull request.
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## Credits
+
+This project uses open-source libraries:
+- [React](https://react.dev/) - UI framework
+- [Zustand](https://github.com/pmndrs/zustand) - State management
+- [Framer Motion](https://www.framer.com/motion/) - Animations
+- [TailwindCSS](https://tailwindcss.com/) - Styling
+- [Lucide](https://lucide.dev/) - Icons
+
+---
 
 ## License
 
-MIT
+This project is licensed under the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.en.html).

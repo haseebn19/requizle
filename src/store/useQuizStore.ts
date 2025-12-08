@@ -1,12 +1,12 @@
 import {create} from 'zustand';
 import {persist} from 'zustand/middleware';
-import type {Subject, ProgressMap, SessionState, StudyMode, QuestionProgress} from '../types';
+import type {Subject, SessionState, StudyMode, QuestionProgress, Profile} from '../types';
 import {generateQueue, getActiveQuestions, checkAnswer} from '../utils/quizLogic';
+import {v4 as uuidv4} from 'uuid';
 
 interface QuizState {
-    subjects: Subject[];
-    progress: ProgressMap;
-    session: SessionState;
+    profiles: Record<string, Profile>;
+    activeProfileId: string;
 
     // Actions
     setSubjects: (subjects: Subject[]) => void;
@@ -18,16 +18,29 @@ interface QuizState {
     setIncludeMastered: (include: boolean) => void;
     restartQueue: () => void;
 
-    submitAnswer: (answer: any) => {correct: boolean; explanation?: string};
+    submitAnswer: (answer: unknown) => {correct: boolean; explanation?: string};
     skipQuestion: () => void;
     nextQuestion: () => void;
 
     resetSubjectProgress: (subjectId: string) => void;
+
+    // Profile Actions
+    createProfile: (name: string) => void;
+    switchProfile: (id: string) => void;
+    deleteProfile: (id: string) => void;
+    importProfile: (profile: Profile) => void;
+    resetAllData: () => void;
 }
 
+// Helper to get current profile
+const getCurrentProfile = (state: QuizState) => state.profiles[state.activeProfileId];
+
 // Helper to get current subject from state
-const getCurrentSubject = (state: QuizState) =>
-    state.subjects.find(s => s.id === state.session.subjectId);
+const getCurrentSubject = (state: QuizState) => {
+    const profile = getCurrentProfile(state);
+    if (!profile) return undefined;
+    return profile.subjects.find(s => s.id === profile.session.subjectId);
+};
 
 // Helper to flatten progress map for a subject
 function flattenProgress(subjectProgress: Record<string, Record<string, QuestionProgress>> | undefined): Record<string, QuestionProgress> {
@@ -39,57 +52,89 @@ function flattenProgress(subjectProgress: Record<string, Record<string, Question
     return flat;
 }
 
+const DEFAULT_PROFILE_ID = 'default';
+
 export const useQuizStore = create<QuizState>()(
     persist(
         (set, get) => ({
-            subjects: [],
-            progress: {},
-            session: {
-                subjectId: null,
-                selectedTopicIds: [],
-                mode: 'random',
-                includeMastered: false,
-                queue: [],
-                currentQuestionId: null,
+            profiles: {
+                [DEFAULT_PROFILE_ID]: {
+                    id: DEFAULT_PROFILE_ID,
+                    name: 'Default',
+                    subjects: [],
+                    progress: {},
+                    session: {
+                        subjectId: null,
+                        selectedTopicIds: [],
+                        mode: 'random',
+                        includeMastered: false,
+                        queue: [],
+                        currentQuestionId: null,
+                    },
+                    createdAt: Date.now()
+                }
             },
+            activeProfileId: DEFAULT_PROFILE_ID,
 
-            setSubjects: (subjects) => set({subjects}),
+            setSubjects: (subjects) => set((state) => {
+                const profile = getCurrentProfile(state);
+                return {
+                    profiles: {
+                        ...state.profiles,
+                        [state.activeProfileId]: {
+                            ...profile,
+                            subjects
+                        }
+                    }
+                };
+            }),
 
-            importSubjects: (newSubjects) => set((state) => ({
-                subjects: [...state.subjects, ...newSubjects]
-            })),
+            importSubjects: (newSubjects) => set((state) => {
+                const profile = getCurrentProfile(state);
+                return {
+                    profiles: {
+                        ...state.profiles,
+                        [state.activeProfileId]: {
+                            ...profile,
+                            subjects: [...profile.subjects, ...newSubjects]
+                        }
+                    }
+                };
+            }),
 
             startSession: (subjectId) => {
                 set((state) => {
-                    const subject = state.subjects.find(s => s.id === subjectId);
+                    const profile = getCurrentProfile(state);
+                    const subject = profile.subjects.find(s => s.id === subjectId);
                     if (!subject) return state;
 
-                    const newState = {
-                        ...state,
-                        session: {
-                            ...state.session,
-                            subjectId,
-                            selectedTopicIds: [], // Reset selection to "all"
-                            queue: [],
-                            currentQuestionId: null
-                        }
+                    const newSession: SessionState = {
+                        ...profile.session,
+                        subjectId,
+                        selectedTopicIds: [], // Reset selection to "all"
+                        queue: [],
+                        currentQuestionId: null
                     };
 
                     // Generate initial queue
                     const questions = getActiveQuestions(subject, []);
                     const queue = generateQueue(
                         questions,
-                        flattenProgress(state.progress[subjectId]),
-                        newState.session.mode,
-                        newState.session.includeMastered
+                        flattenProgress(profile.progress[subjectId]),
+                        newSession.mode,
+                        newSession.includeMastered
                     );
 
+                    newSession.queue = queue.slice(1);
+                    newSession.currentQuestionId = queue[0] || null;
+
                     return {
-                        ...newState,
-                        session: {
-                            ...newState.session,
-                            queue: queue.slice(1),
-                            currentQuestionId: queue[0] || null
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                session: newSession
+                            }
                         }
                     };
                 });
@@ -97,30 +142,36 @@ export const useQuizStore = create<QuizState>()(
 
             toggleTopic: (topicId) => {
                 set((state) => {
-                    const currentSelected = state.session.selectedTopicIds;
+                    const profile = getCurrentProfile(state);
+                    const currentSelected = profile.session.selectedTopicIds;
                     const newSelected = currentSelected.includes(topicId)
                         ? currentSelected.filter(id => id !== topicId)
                         : [...currentSelected, topicId];
 
                     // Rebuild queue
-                    const subject = getCurrentSubject(state as QuizState);
+                    const subject = getCurrentSubject(state);
                     if (!subject) return state;
 
                     const questions = getActiveQuestions(subject, newSelected);
                     const queue = generateQueue(
                         questions,
-                        flattenProgress(state.progress[subject.id]),
-                        state.session.mode,
-                        state.session.includeMastered
+                        flattenProgress(profile.progress[subject.id]),
+                        profile.session.mode,
+                        profile.session.includeMastered
                     );
 
                     return {
-                        ...state,
-                        session: {
-                            ...state.session,
-                            selectedTopicIds: newSelected,
-                            queue: queue.slice(1),
-                            currentQuestionId: queue[0] || null
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                session: {
+                                    ...profile.session,
+                                    selectedTopicIds: newSelected,
+                                    queue: queue.slice(1),
+                                    currentQuestionId: queue[0] || null
+                                }
+                            }
                         }
                     };
                 });
@@ -128,24 +179,41 @@ export const useQuizStore = create<QuizState>()(
 
             setMode: (mode) => {
                 set((state) => {
-                    const subject = getCurrentSubject(state as QuizState);
-                    if (!subject) return {session: {...state.session, mode}} as any;
+                    const profile = getCurrentProfile(state);
+                    const subject = getCurrentSubject(state);
 
-                    const questions = getActiveQuestions(subject, state.session.selectedTopicIds);
+                    if (!subject) {
+                        return {
+                            profiles: {
+                                ...state.profiles,
+                                [state.activeProfileId]: {
+                                    ...profile,
+                                    session: {...profile.session, mode}
+                                }
+                            }
+                        };
+                    }
+
+                    const questions = getActiveQuestions(subject, profile.session.selectedTopicIds);
                     const queue = generateQueue(
                         questions,
-                        flattenProgress(state.progress[subject.id]),
+                        flattenProgress(profile.progress[subject.id]),
                         mode,
-                        state.session.includeMastered
+                        profile.session.includeMastered
                     );
 
                     return {
-                        ...state,
-                        session: {
-                            ...state.session,
-                            mode,
-                            queue: queue.slice(1),
-                            currentQuestionId: queue[0] || null
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                session: {
+                                    ...profile.session,
+                                    mode,
+                                    queue: queue.slice(1),
+                                    currentQuestionId: queue[0] || null
+                                }
+                            }
                         }
                     };
                 });
@@ -153,30 +221,44 @@ export const useQuizStore = create<QuizState>()(
 
             setIncludeMastered: (include) => {
                 set((state) => {
+                    const profile = getCurrentProfile(state);
                     return {
-                        session: {...state.session, includeMastered: include}
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                session: {...profile.session, includeMastered: include}
+                            }
+                        }
                     };
                 });
             },
 
             restartQueue: () => {
                 set((state) => {
-                    const subject = getCurrentSubject(state as QuizState);
+                    const profile = getCurrentProfile(state);
+                    const subject = getCurrentSubject(state);
                     if (!subject) return state;
 
-                    const questions = getActiveQuestions(subject, state.session.selectedTopicIds);
+                    const questions = getActiveQuestions(subject, profile.session.selectedTopicIds);
                     const queue = generateQueue(
                         questions,
-                        flattenProgress(state.progress[subject.id]),
-                        state.session.mode,
-                        state.session.includeMastered
+                        flattenProgress(profile.progress[subject.id]),
+                        profile.session.mode,
+                        profile.session.includeMastered
                     );
 
                     return {
-                        session: {
-                            ...state.session,
-                            queue: queue.slice(1),
-                            currentQuestionId: queue[0] || null
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                session: {
+                                    ...profile.session,
+                                    queue: queue.slice(1),
+                                    currentQuestionId: queue[0] || null
+                                }
+                            }
                         }
                     };
                 });
@@ -184,8 +266,9 @@ export const useQuizStore = create<QuizState>()(
 
             submitAnswer: (answer) => {
                 const state = get();
+                const profile = getCurrentProfile(state);
                 const subject = getCurrentSubject(state);
-                const {currentQuestionId} = state.session;
+                const {currentQuestionId} = profile.session;
 
                 if (!subject || !currentQuestionId) return {correct: false};
 
@@ -207,7 +290,8 @@ export const useQuizStore = create<QuizState>()(
 
                 // Update progress
                 set((state) => {
-                    const subjectProgress = state.progress[subject.id] || {};
+                    const currentProfile = state.profiles[state.activeProfileId];
+                    const subjectProgress = currentProfile.progress[subject.id] || {};
                     const topicProgress = subjectProgress[topicId!] || {};
                     const currentQProgress = topicProgress[currentQuestionId] || {
                         id: currentQuestionId,
@@ -224,7 +308,7 @@ export const useQuizStore = create<QuizState>()(
                     };
 
                     const newProgress = {
-                        ...state.progress,
+                        ...currentProfile.progress,
                         [subject.id]: {
                             ...subjectProgress,
                             [topicId!]: {
@@ -235,7 +319,7 @@ export const useQuizStore = create<QuizState>()(
                     };
 
                     // Queue management
-                    let newQueue = [...state.session.queue];
+                    const newQueue = [...currentProfile.session.queue];
 
                     if (!isCorrect) {
                         // Reinsert 4-6 positions later
@@ -244,13 +328,17 @@ export const useQuizStore = create<QuizState>()(
                         newQueue.splice(insertIndex, 0, currentQuestionId);
                     }
 
-                    // Don't advance yet, wait for nextQuestion
                     return {
-                        progress: newProgress,
-                        session: {
-                            ...state.session,
-                            queue: newQueue,
-                            // currentQuestionId stays same
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...currentProfile,
+                                progress: newProgress,
+                                session: {
+                                    ...currentProfile.session,
+                                    queue: newQueue
+                                }
+                            }
                         }
                     };
                 });
@@ -260,14 +348,21 @@ export const useQuizStore = create<QuizState>()(
 
             nextQuestion: () => {
                 set((state) => {
-                    const newQueue = [...state.session.queue];
+                    const profile = getCurrentProfile(state);
+                    const newQueue = [...profile.session.queue];
                     const nextQuestionId = newQueue.shift() || null;
 
                     return {
-                        session: {
-                            ...state.session,
-                            queue: newQueue,
-                            currentQuestionId: nextQuestionId
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                session: {
+                                    ...profile.session,
+                                    queue: newQueue,
+                                    currentQuestionId: nextQuestionId
+                                }
+                            }
                         }
                     };
                 });
@@ -275,8 +370,9 @@ export const useQuizStore = create<QuizState>()(
 
             skipQuestion: () => {
                 const state = get();
+                const profile = getCurrentProfile(state);
                 const subject = getCurrentSubject(state);
-                const {currentQuestionId} = state.session;
+                const {currentQuestionId} = profile.session;
                 if (!subject || !currentQuestionId) return;
 
                 let topicId = null;
@@ -289,7 +385,8 @@ export const useQuizStore = create<QuizState>()(
                 if (!topicId) return;
 
                 set((state) => {
-                    const subjectProgress = state.progress[subject.id] || {};
+                    const currentProfile = state.profiles[state.activeProfileId];
+                    const subjectProgress = currentProfile.progress[subject.id] || {};
                     const topicProgress = subjectProgress[topicId!] || {};
                     const currentQProgress = topicProgress[currentQuestionId] || {
                         id: currentQuestionId,
@@ -306,7 +403,7 @@ export const useQuizStore = create<QuizState>()(
                     };
 
                     const newProgress = {
-                        ...state.progress,
+                        ...currentProfile.progress,
                         [subject.id]: {
                             ...subjectProgress,
                             [topicId!]: {
@@ -316,7 +413,7 @@ export const useQuizStore = create<QuizState>()(
                         }
                     };
 
-                    let newQueue = [...state.session.queue];
+                    const newQueue = [...currentProfile.session.queue];
                     const offset = Math.floor(Math.random() * 3) + 4;
                     const insertIndex = Math.min(offset, newQueue.length);
                     newQueue.splice(insertIndex, 0, currentQuestionId);
@@ -324,11 +421,17 @@ export const useQuizStore = create<QuizState>()(
                     const nextQuestionId = newQueue.shift() || null;
 
                     return {
-                        progress: newProgress,
-                        session: {
-                            ...state.session,
-                            queue: newQueue,
-                            currentQuestionId: nextQuestionId
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...currentProfile,
+                                progress: newProgress,
+                                session: {
+                                    ...currentProfile.session,
+                                    queue: newQueue,
+                                    currentQuestionId: nextQuestionId
+                                }
+                            }
                         }
                     };
                 });
@@ -336,17 +439,18 @@ export const useQuizStore = create<QuizState>()(
 
             resetSubjectProgress: (subjectId) => {
                 set((state) => {
-                    const newProgress = {...state.progress};
+                    const profile = getCurrentProfile(state);
+                    const newProgress = {...profile.progress};
                     delete newProgress[subjectId];
 
-                    let newSession = state.session;
-                    if (state.session.subjectId === subjectId) {
-                        const subject = state.subjects.find(s => s.id === subjectId);
+                    let newSession = profile.session;
+                    if (profile.session.subjectId === subjectId) {
+                        const subject = profile.subjects.find(s => s.id === subjectId);
                         if (subject) {
-                            const questions = getActiveQuestions(subject, state.session.selectedTopicIds);
-                            const queue = generateQueue(questions, {}, state.session.mode, state.session.includeMastered);
+                            const questions = getActiveQuestions(subject, profile.session.selectedTopicIds);
+                            const queue = generateQueue(questions, {}, profile.session.mode, profile.session.includeMastered);
                             newSession = {
-                                ...state.session,
+                                ...profile.session,
                                 queue: queue.slice(1),
                                 currentQuestionId: queue[0] || null
                             };
@@ -354,14 +458,144 @@ export const useQuizStore = create<QuizState>()(
                     }
 
                     return {
-                        progress: newProgress,
-                        session: newSession
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                progress: newProgress,
+                                session: newSession
+                            }
+                        }
                     };
                 });
+            },
+
+            // Profile Actions
+            createProfile: (name) => {
+                const newId = uuidv4();
+                const newProfile: Profile = {
+                    id: newId,
+                    name,
+                    subjects: [], // Should we copy default subjects? Maybe not.
+                    progress: {},
+                    session: {
+                        subjectId: null,
+                        selectedTopicIds: [],
+                        mode: 'random',
+                        includeMastered: false,
+                        queue: [],
+                        currentQuestionId: null,
+                    },
+                    createdAt: Date.now()
+                };
+
+                set(state => ({
+                    profiles: {...state.profiles, [newId]: newProfile},
+                    activeProfileId: newId
+                }));
+            },
+
+            switchProfile: (id) => {
+                set(state => {
+                    if (!state.profiles[id]) return state;
+                    return {activeProfileId: id};
+                });
+            },
+
+            deleteProfile: (id) => {
+                set(state => {
+                    const profileIds = Object.keys(state.profiles);
+
+                    // If this is the last profile, reset it to Default
+                    if (profileIds.length === 1 && profileIds[0] === id) {
+                        const resetDefault: Profile = {
+                            id: DEFAULT_PROFILE_ID,
+                            name: 'Default',
+                            subjects: [],
+                            progress: {},
+                            session: {
+                                subjectId: null,
+                                selectedTopicIds: [],
+                                mode: 'random',
+                                includeMastered: false,
+                                queue: [],
+                                currentQuestionId: null,
+                            },
+                            createdAt: Date.now()
+                        };
+                        return {
+                            profiles: {
+                                [DEFAULT_PROFILE_ID]: resetDefault
+                            },
+                            activeProfileId: DEFAULT_PROFILE_ID
+                        };
+                    }
+
+                    const newProfiles = {...state.profiles};
+                    delete newProfiles[id];
+
+                    // If deleting active profile, switch to another one
+                    let newActiveId = state.activeProfileId;
+                    if (state.activeProfileId === id) {
+                        // Switch to the most recently created profile
+                        const remaining = Object.values(newProfiles).sort((a, b) => b.createdAt - a.createdAt);
+                        newActiveId = remaining[0].id;
+                    }
+
+                    return {
+                        profiles: newProfiles,
+                        activeProfileId: newActiveId
+                    };
+                });
+            },
+
+            importProfile: (profile) => {
+                set(state => ({
+                    profiles: {
+                        ...state.profiles,
+                        [profile.id]: profile
+                    },
+                    activeProfileId: profile.id
+                }));
+            },
+
+            resetAllData: () => {
+                localStorage.removeItem('quiz-storage');
+                window.location.reload();
             }
         }),
         {
             name: 'quiz-storage',
+            version: 1,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            migrate: (persistedState: any, version: number) => {
+                if (version === 0 || version === undefined) {
+                    // Migrate from version 0 (flat state) to version 1 (profiles)
+                    const defaultProfile: Profile = {
+                        id: DEFAULT_PROFILE_ID,
+                        name: 'Default',
+                        subjects: persistedState.subjects || [],
+                        progress: persistedState.progress || {},
+                        session: persistedState.session || {
+                            subjectId: null,
+                            selectedTopicIds: [],
+                            mode: 'random',
+                            includeMastered: false,
+                            queue: [],
+                            currentQuestionId: null,
+                        },
+                        createdAt: Date.now()
+                    };
+
+                    return {
+                        profiles: {[DEFAULT_PROFILE_ID]: defaultProfile},
+                        activeProfileId: DEFAULT_PROFILE_ID
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    } as any;
+                }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return persistedState as any as QuizState;
+            }
         }
     )
 );

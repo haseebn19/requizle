@@ -57,7 +57,7 @@ export const generateQueue = (
     return queue.map(q => q.id);
 };
 
-export const checkAnswer = (question: Question, userAnswer: any): boolean => {
+export const checkAnswer = (question: Question, userAnswer: unknown): boolean => {
     switch (question.type) {
         case 'multiple_choice':
             return userAnswer === question.answerIndex;
@@ -76,7 +76,7 @@ export const checkAnswer = (question: Question, userAnswer: any): boolean => {
         case 'true_false':
             return userAnswer === question.answer;
 
-        case 'short_answer': {
+        case 'keywords': {
             const answers = Array.isArray(question.answer) ? question.answer : [question.answer];
             const input = String(userAnswer).trim();
 
@@ -90,12 +90,14 @@ export const checkAnswer = (question: Question, userAnswer: any): boolean => {
         case 'matching': {
             // userAnswer is Record<left, right>
             if (!userAnswer || typeof userAnswer !== 'object') return false;
-            return question.pairs.every(pair => userAnswer[pair.left] === pair.right);
+            const answers = userAnswer as Record<string, string>;
+            return question.pairs.every(pair => answers[pair.left] === pair.right);
         }
 
         case 'word_bank': {
             // userAnswer is string[] (filled slots in order)
             if (!Array.isArray(userAnswer)) return false;
+            if (userAnswer.length !== question.answers.length) return false;
             return userAnswer.every((word, index) => word === question.answers[index]);
         }
 
