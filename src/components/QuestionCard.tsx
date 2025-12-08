@@ -4,7 +4,7 @@ import {useQuizStore} from '../store/useQuizStore';
 import {MultipleAnswerInput} from './inputs/MultipleAnswerInput';
 import {MultipleChoiceInput} from './inputs/MultipleChoiceInput';
 import {TrueFalseInput} from './inputs/TrueFalseInput';
-import {ShortAnswerInput} from './inputs/ShortAnswerInput';
+import {KeywordsInput} from './inputs/KeywordsInput';
 import {MatchingInput} from './inputs/MatchingInput';
 import {WordBankInput} from './inputs/WordBankInput';
 import {motion, AnimatePresence} from 'framer-motion';
@@ -109,8 +109,8 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 submittedAnswer={submittedAnswer as boolean | null}
                             />
                         )}
-                        {question.type === 'short_answer' && (
-                            <ShortAnswerInput
+                        {question.type === 'keywords' && (
+                            <KeywordsInput
                                 question={question}
                                 onAnswer={handleAnswer}
                                 disabled={!!submittedAnswer}
@@ -164,7 +164,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                                         {question.type === 'multiple_choice' && question.choices[question.answerIndex]}
                                                         {question.type === 'multiple_answer' && question.answerIndices.map(i => question.choices[i]).join(', ')}
                                                         {question.type === 'true_false' && (question.answer ? 'True' : 'False')}
-                                                        {question.type === 'short_answer' && (Array.isArray(question.answer) ? question.answer.join(' or ') : question.answer)}
+                                                        {question.type === 'keywords' && (Array.isArray(question.answer) ? question.answer.join(' or ') : question.answer)}
                                                         {question.type === 'matching' && (
                                                             <ul className="list-disc pl-4 mt-1 space-y-1">
                                                                 {question.pairs.map((pair, i) => (

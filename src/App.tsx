@@ -60,7 +60,7 @@ const SAMPLE_SUBJECTS: Subject[] = [
           },
           {
             id: 'q-sa',
-            type: 'short_answer',
+            type: 'keywords',
             topicId: 'all-types',
             prompt: 'What is the capital of France?',
             answer: 'Paris',

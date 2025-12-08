@@ -13,7 +13,7 @@ A modern, single-page web application designed to help users study efficiently t
   - Multiple Choice
   - Multiple Answer
   - True/False
-  - Short Answer
+  - Keywords
   - Matching (with randomized right-side options)
   - Word Bank
 - **Data Persistence**: Progress automatically saved to local storage
@@ -147,7 +147,7 @@ You can import a single subject object or an array of subjects:
           },
           {
             "id": "q4",
-            "type": "short_answer",
+            "type": "keywords",
             "topicId": "algebra",
             "prompt": "What is the coefficient in 5x?",
             "answer": "5",
@@ -193,10 +193,10 @@ You can import a single subject object or an array of subjects:
 - Simple boolean answer
 - Requires `answer` (boolean)
 
-#### Short Answer
-- Text input answer
+#### Keywords
+- Text input answer matched against keywords
 - Supports case-sensitive and case-insensitive matching
-- Requires `answer` (string or array of strings)
+- Requires `answer` (string or array of acceptable strings)
 - Optional `caseSensitive` boolean
 
 #### Matching

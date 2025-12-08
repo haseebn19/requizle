@@ -1,15 +1,15 @@
 import React, {useState} from 'react';
-import type {ShortAnswerQuestion} from '../../types';
+import type {KeywordsQuestion} from '../../types';
 import {Send} from 'lucide-react';
 
 interface Props {
-    question: ShortAnswerQuestion;
+    question: KeywordsQuestion;
     onAnswer: (answer: string) => void;
     disabled: boolean;
     submittedAnswer: string | null;
 }
 
-export const ShortAnswerInput: React.FC<Props> = ({question, onAnswer, disabled, submittedAnswer}) => {
+export const KeywordsInput: React.FC<Props> = ({question, onAnswer, disabled, submittedAnswer}) => {
     const [input, setInput] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -48,3 +48,6 @@ export const ShortAnswerInput: React.FC<Props> = ({question, onAnswer, disabled,
         </form>
     );
 };
+
+// Legacy export for backwards compatibility
+export {KeywordsInput as ShortAnswerInput};

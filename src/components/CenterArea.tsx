@@ -28,11 +28,11 @@ export const CenterArea: React.FC = () => {
 
     if (!currentSubject) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center p-10 text-center text-slate-400">
-                <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+            <div className="flex-1 flex flex-col items-center justify-center p-10 text-center text-slate-400 dark:text-slate-500">
+                <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
                     <ListOrdered size={40} className="opacity-20" />
                 </div>
-                <h2 className="text-xl font-semibold text-slate-600 mb-2">Ready to study?</h2>
+                <h2 className="text-xl font-semibold text-slate-600 dark:text-slate-300 mb-2">Ready to study?</h2>
                 <p>Select a subject from the sidebar to begin.</p>
             </div>
         );
@@ -41,11 +41,11 @@ export const CenterArea: React.FC = () => {
     if (!currentQuestion) {
         return (
             <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
-                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 text-green-600">
+                <div className="w-24 h-24 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6 text-green-600 dark:text-green-400">
                     <CheckCircle2 size={40} />
                 </div>
-                <h2 className="text-2xl font-bold text-slate-800 mb-2">All Caught Up!</h2>
-                <p className="text-slate-500 max-w-md mb-8">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">All Caught Up!</h2>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8">
                     You've mastered all the selected questions. Great job!
                     You can include mastered questions to keep practicing or select different topics.
                 </p>

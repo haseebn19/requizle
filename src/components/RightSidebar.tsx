@@ -53,7 +53,7 @@ export const RightSidebar: React.FC = () => {
         const validQuestionTypes: QuestionType[] = [
             'multiple_choice',
             'multiple_answer',
-            'short_answer',
+            'keywords',
             'true_false',
             'matching',
             'word_bank'
@@ -114,12 +114,12 @@ export const RightSidebar: React.FC = () => {
                     break;
                 }
 
-                case 'short_answer': {
+                case 'keywords': {
                     if (typeof question.answer !== 'string' && !Array.isArray(question.answer)) {
-                        throw new Error(`Invalid short_answer question "${question.id}": Missing or invalid "answer" (must be string or array of strings)`);
+                        throw new Error(`Invalid keywords question "${question.id}": Missing or invalid "answer" (must be string or array of strings)`);
                     }
                     if (Array.isArray(question.answer) && question.answer.length === 0) {
-                        throw new Error(`Invalid short_answer question "${question.id}": "answer" array cannot be empty`);
+                        throw new Error(`Invalid keywords question "${question.id}": "answer" array cannot be empty`);
                     }
                     break;
                 }

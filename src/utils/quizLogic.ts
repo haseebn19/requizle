@@ -76,7 +76,7 @@ export const checkAnswer = (question: Question, userAnswer: unknown): boolean =>
         case 'true_false':
             return userAnswer === question.answer;
 
-        case 'short_answer': {
+        case 'keywords': {
             const answers = Array.isArray(question.answer) ? question.answer : [question.answer];
             const input = String(userAnswer).trim();
 
@@ -97,6 +97,7 @@ export const checkAnswer = (question: Question, userAnswer: unknown): boolean =>
         case 'word_bank': {
             // userAnswer is string[] (filled slots in order)
             if (!Array.isArray(userAnswer)) return false;
+            if (userAnswer.length !== question.answers.length) return false;
             return userAnswer.every((word, index) => word === question.answers[index]);
         }
 
