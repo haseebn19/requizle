@@ -79,20 +79,66 @@ You can import your own subjects and questions using JSON. Upload a file or past
 ```json
 [
   {
-    "id": "my-subject",
-    "name": "My Subject",
+    "id": "example-subject",
+    "name": "Example Subject",
     "topics": [
       {
         "id": "topic-1",
-        "name": "Topic Name",
+        "name": "All Question Types",
         "questions": [
           {
             "id": "q1",
             "type": "multiple_choice",
             "topicId": "topic-1",
-            "prompt": "What is 2 + 2?",
-            "choices": ["3", "4", "5", "6"],
-            "answerIndex": 1
+            "prompt": "What is the capital of France?",
+            "choices": ["London", "Paris", "Berlin", "Madrid"],
+            "answerIndex": 1,
+            "explanation": "Paris is the capital of France."
+          },
+          {
+            "id": "q2",
+            "type": "multiple_answer",
+            "topicId": "topic-1",
+            "prompt": "Select all prime numbers:",
+            "choices": ["2", "4", "5", "9"],
+            "answerIndices": [0, 2],
+            "explanation": "2 and 5 are prime. 4 and 9 are composite."
+          },
+          {
+            "id": "q3",
+            "type": "true_false",
+            "topicId": "topic-1",
+            "prompt": "The Earth is flat.",
+            "answer": false,
+            "explanation": "The Earth is roughly spherical."
+          },
+          {
+            "id": "q4",
+            "type": "keywords",
+            "topicId": "topic-1",
+            "prompt": "What gas do plants absorb from the air?",
+            "answer": ["carbon dioxide", "co2"],
+            "explanation": "Plants absorb CO2 for photosynthesis."
+          },
+          {
+            "id": "q5",
+            "type": "matching",
+            "topicId": "topic-1",
+            "prompt": "Match the countries to their capitals:",
+            "pairs": [
+              { "left": "Japan", "right": "Tokyo" },
+              { "left": "Italy", "right": "Rome" },
+              { "left": "Egypt", "right": "Cairo" }
+            ]
+          },
+          {
+            "id": "q6",
+            "type": "word_bank",
+            "topicId": "topic-1",
+            "prompt": "Complete the sentence:",
+            "sentence": "The _ is the powerhouse of the _.",
+            "wordBank": ["mitochondria", "cell", "nucleus", "atom"],
+            "answers": ["mitochondria", "cell"]
           }
         ]
       }
