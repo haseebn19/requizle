@@ -1,5 +1,7 @@
 # ReQuizle
 
+[![CI](https://github.com/haseebn19/requizle/actions/workflows/ci.yml/badge.svg)](https://github.com/haseebn19/requizle/actions/workflows/ci.yml)
+
 <img src="public/icon.svg" alt="ReQuizle Logo" width="250">
 
 ReQuizle is a modern web application designed to help users study efficiently through spaced repetition and active recall.
