@@ -62,12 +62,7 @@ export const Layout: React.FC<LayoutProps> = ({leftSidebar, center, rightSidebar
                             setRightSidebarVisible(false);
                             setLeftSidebarVisible(!leftSidebarVisible);
                         }}
-                        className={clsx(
-                            "p-2 rounded-lg transition-all duration-200",
-                            leftSidebarVisible
-                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                        )}
+                        className={leftSidebarVisible ? "btn-icon-active" : "btn-icon"}
                         aria-label={leftSidebarVisible ? "Close subjects menu" : "Open subjects menu"}
                     >
                         {leftSidebarVisible ? <X size={20} /> : <Menu size={20} />}
@@ -85,12 +80,7 @@ export const Layout: React.FC<LayoutProps> = ({leftSidebar, center, rightSidebar
                             setLeftSidebarVisible(false);
                             setRightSidebarVisible(!rightSidebarVisible);
                         }}
-                        className={clsx(
-                            "p-2 rounded-lg transition-all duration-200",
-                            rightSidebarVisible
-                                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                        )}
+                        className={rightSidebarVisible ? "btn-icon-active" : "btn-icon"}
                         aria-label={rightSidebarVisible ? "Close editor" : "Open editor"}
                     >
                         <PanelRight size={20} />
