@@ -198,7 +198,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                     <div className="mt-6 flex justify-end">
                                         <button
                                             onClick={() => useQuizStore.getState().nextQuestion()}
-                                            className={`btn ${result.correct ? 'btn-primary bg-green-600 hover:bg-green-700 shadow-green-200' : 'btn-primary bg-red-600 hover:bg-red-700 shadow-red-200'} flex items-center gap-2`}
+                                            className={`${result.correct ? 'btn-success' : 'btn-danger'} flex items-center gap-2`}
                                             autoFocus
                                         >
                                             Continue <ArrowRight size={18} />
