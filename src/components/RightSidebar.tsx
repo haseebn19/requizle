@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery, getActiveQuestions} from '../utils/quizLogic';
-import {Upload, Trash2, AlertCircle, Download, Plus} from 'lucide-react';
+import {Upload, Trash2, AlertCircle, Download, Plus, ExternalLink} from 'lucide-react';
 import {ThemeToggle} from './ThemeToggle';
 import {clsx} from 'clsx';
 import type {Subject, Question, QuestionType, Topic} from '../types';
@@ -323,9 +323,20 @@ export const RightSidebar: React.FC = () => {
 
             {activeTab === 'import' && (
                 <div className="space-y-4 animate-in fade-in duration-300">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg flex items-start gap-3 text-sm text-blue-700 dark:text-blue-300">
-                        <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
-                        <p>Import JSON to add custom subjects. See spec for format.</p>
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-sm text-blue-700 dark:text-blue-300 space-y-2">
+                        <div className="flex items-start gap-2">
+                            <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
+                            <p>Import a JSON file to add custom subjects and questions.</p>
+                        </div>
+                        <a
+                            href="https://github.com/haseebn19/ReQuizle#importing-custom-content"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                        >
+                            <ExternalLink size={14} />
+                            View JSON format documentation
+                        </a>
                     </div>
 
                     <div className="space-y-2">

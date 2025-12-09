@@ -33,12 +33,12 @@ ReQuizle is a modern web application designed to help users study efficiently th
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/haseebn19/QuizTool.git
+   git clone https://github.com/haseebn19/ReQuizle.git
    ```
 
 2. Navigate to the project directory:
    ```bash
-   cd QuizTool
+   cd ReQuizle
    ```
 
 3. Install the required dependencies:
@@ -69,6 +69,52 @@ ReQuizle is a modern web application designed to help users study efficiently th
 4. **Import Custom Content**:
    - Use the Import tab in the right sidebar
    - Upload JSON files with your own subjects and questions
+
+## Importing Custom Content
+
+You can import your own subjects and questions using JSON. Upload a file or paste JSON in the Import tab.
+
+### JSON Format
+
+```json
+[
+  {
+    "id": "my-subject",
+    "name": "My Subject",
+    "topics": [
+      {
+        "id": "topic-1",
+        "name": "Topic Name",
+        "questions": [
+          {
+            "id": "q1",
+            "type": "multiple_choice",
+            "topicId": "topic-1",
+            "prompt": "What is 2 + 2?",
+            "choices": ["3", "4", "5", "6"],
+            "answerIndex": 1
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
+### Question Types
+
+| Type | Required Fields |
+|------|----------------|
+| `multiple_choice` | `choices` (array), `answerIndex` (number) |
+| `multiple_answer` | `choices` (array), `answerIndices` (number array) |
+| `true_false` | `answer` (boolean) |
+| `keywords` | `answer` (string or string array) |
+| `matching` | `pairs` (array of `{left, right}`) |
+| `word_bank` | `sentence` (with `_` for blanks), `wordBank` (array), `answers` (array) |
+
+All questions require: `id`, `type`, `topicId`, `prompt`
+
+Optional: `explanation` (shown after answering)
 
 ## Building for Production
 
