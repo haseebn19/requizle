@@ -42,7 +42,16 @@ export const KeywordsInput: React.FC<Props> = ({question, onAnswer, disabled, su
             {submittedAnswer && (
                 <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Correct Answer</span>
-                    <p className="text-slate-800 dark:text-slate-200 font-medium mt-1">{question.answer}</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {(Array.isArray(question.answer) ? question.answer : [question.answer]).map((keyword, i, arr) => (
+                            <React.Fragment key={i}>
+                                <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300 rounded font-semibold">
+                                    {keyword}
+                                </span>
+                                {i < arr.length - 1 && <span className="text-slate-400 self-center">or</span>}
+                            </React.Fragment>
+                        ))}
+                    </div>
                 </div>
             )}
         </form>
