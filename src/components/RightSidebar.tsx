@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery, getActiveQuestions} from '../utils/quizLogic';
-import {Upload, Trash2, AlertCircle, Download, Plus, ExternalLink} from 'lucide-react';
+import {Upload, Trash2, AlertCircle, Download, Plus, ExternalLink, Pencil, Check, X} from 'lucide-react';
 import {ThemeToggle} from './ThemeToggle';
 import {clsx} from 'clsx';
 import type {Subject, Question, QuestionType, Topic} from '../types';
@@ -11,16 +11,24 @@ export const RightSidebar: React.FC = () => {
         profiles,
         activeProfileId,
         createProfile,
+        renameProfile,
         switchProfile,
         deleteProfile,
         importProfile,
         resetAllData,
         importSubjects,
-        resetSubjectProgress
+        resetSubjectProgress,
+        settings,
+        setConfirmSubjectDelete,
+        setConfirmProfileDelete
     } = useQuizStore();
     const [activeTab, setActiveTab] = useState<'mastery' | 'import' | 'settings'>('mastery');
     const [jsonInput, setJsonInput] = useState('');
     const [importError, setImportError] = useState<string | null>(null);
+    const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+    const [editingName, setEditingName] = useState('');
+    const [deleteProfileConfirm, setDeleteProfileConfirm] = useState<{id: string; name: string} | null>(null);
+    const [deleteProfileInput, setDeleteProfileInput] = useState('');
 
     const currentProfile = profiles[activeProfileId];
     const {subjects, progress, session} = currentProfile;
@@ -215,21 +223,61 @@ export const RightSidebar: React.FC = () => {
         return subjectsToValidate.map((s, idx) => validateSubject(s, idx));
     };
 
+    // Detect if data is a profile or subjects and import accordingly
+    const detectAndImport = (parsed: unknown): { type: 'profile' | 'subjects'; message: string } => {
+        // Check if it's a profile (has profile-specific fields)
+        if (
+            typeof parsed === 'object' &&
+            parsed !== null &&
+            'id' in parsed &&
+            'name' in parsed &&
+            'subjects' in parsed &&
+            'progress' in parsed &&
+            'session' in parsed
+        ) {
+            const profile = parsed as { id: string; name: string; subjects: unknown[]; progress: unknown; session: unknown };
+            if (typeof profile.id === 'string' && typeof profile.name === 'string' && Array.isArray(profile.subjects)) {
+                const existingProfile = profiles[profile.id];
+                importProfile(profile as Parameters<typeof importProfile>[0]);
+                const action = existingProfile ? 'merged with existing' : 'imported';
+                return { type: 'profile', message: `Profile "${profile.name}" ${action} successfully!` };
+            }
+        }
+
+        // Otherwise, try to import as subjects
+        const validatedSubjects = validateSubjects(parsed);
+        const existingSubjectIds = currentProfile.subjects.map(s => s.id);
+        const mergedCount = validatedSubjects.filter(s => existingSubjectIds.includes(s.id)).length;
+        const newCount = validatedSubjects.length - mergedCount;
+        
+        importSubjects(validatedSubjects);
+        
+        let message = '';
+        if (mergedCount > 0 && newCount > 0) {
+            message = `Merged ${mergedCount} existing subject(s) and added ${newCount} new subject(s)`;
+        } else if (mergedCount > 0) {
+            message = `Merged ${mergedCount} subject(s) with existing data`;
+        } else {
+            message = `Added ${newCount} new subject(s)`;
+        }
+        
+        return { type: 'subjects', message };
+    };
+
     const handleImport = () => {
         try {
             const parsed: unknown = JSON.parse(jsonInput);
-            const validatedSubjects = validateSubjects(parsed);
-            importSubjects(validatedSubjects);
+            const result = detectAndImport(parsed);
             setJsonInput('');
             setImportError(null);
-            alert('Import successful!');
+            alert(result.message);
         } catch (e) {
             const errorMessage = e instanceof Error ? e.message : 'Unknown error';
             setImportError(`Import failed: ${errorMessage}`);
         }
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, resetInput = true) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -238,17 +286,19 @@ export const RightSidebar: React.FC = () => {
             try {
                 const content = event.target?.result as string;
                 const parsed: unknown = JSON.parse(content);
-                const validatedSubjects = validateSubjects(parsed);
-                importSubjects(validatedSubjects);
+                const result = detectAndImport(parsed);
                 setJsonInput('');
                 setImportError(null);
-                alert('Import successful!');
+                alert(result.message);
             } catch (e) {
                 const errorMessage = e instanceof Error ? e.message : 'Unknown error';
                 setImportError(`File import failed: ${errorMessage}`);
             }
         };
         reader.readAsText(file);
+        if (resetInput) {
+            e.target.value = '';
+        }
     };
 
     return (
@@ -394,59 +444,119 @@ export const RightSidebar: React.FC = () => {
                                 <div
                                     key={profile.id}
                                     className={clsx(
-                                        "p-3 rounded-lg border transition-all",
+                                        "p-3 rounded-lg border transition-all group",
                                         activeProfileId === profile.id
                                             ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800"
                                             : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-700"
                                     )}
                                 >
                                     <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <span className={clsx(
-                                                "font-medium text-sm",
-                                                activeProfileId === profile.id ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-200"
-                                            )}>
-                                                {profile.name}
-                                            </span>
-                                            {activeProfileId === profile.id && (
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 font-bold uppercase">
-                                                    Active
-                                                </span>
+                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            {editingProfileId === profile.id ? (
+                                                <div className="flex items-center gap-1 flex-1">
+                                                    <input
+                                                        type="text"
+                                                        value={editingName}
+                                                        onChange={(e) => setEditingName(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter' && editingName.trim()) {
+                                                                renameProfile(profile.id, editingName.trim());
+                                                                setEditingProfileId(null);
+                                                            } else if (e.key === 'Escape') {
+                                                                setEditingProfileId(null);
+                                                            }
+                                                        }}
+                                                        className="flex-1 px-2 py-0.5 text-sm font-medium border border-indigo-300 dark:border-indigo-600 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+                                                        autoFocus
+                                                    />
+                                                    <button
+                                                        onClick={() => {
+                                                            if (editingName.trim()) {
+                                                                renameProfile(profile.id, editingName.trim());
+                                                                setEditingProfileId(null);
+                                                            }
+                                                        }}
+                                                        className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                                                        title="Save"
+                                                    >
+                                                        <Check size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setEditingProfileId(null)}
+                                                        className="p-1 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+                                                        title="Cancel"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <span className={clsx(
+                                                        "font-medium text-sm truncate",
+                                                        activeProfileId === profile.id ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-200"
+                                                    )}>
+                                                        {profile.name}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingProfileId(profile.id);
+                                                            setEditingName(profile.name);
+                                                        }}
+                                                        className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                                        title="Rename Profile"
+                                                    >
+                                                        <Pencil size={12} />
+                                                    </button>
+                                                    {activeProfileId === profile.id && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 font-bold uppercase flex-shrink-0">
+                                                            Active
+                                                        </span>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(profile));
-                                                    const downloadAnchorNode = document.createElement('a');
-                                                    downloadAnchorNode.setAttribute("href", dataStr);
-                                                    downloadAnchorNode.setAttribute("download", `quiz-profile-${profile.name.toLowerCase().replace(/\s+/g, '-')}.json`);
-                                                    document.body.appendChild(downloadAnchorNode);
-                                                    downloadAnchorNode.click();
-                                                    downloadAnchorNode.remove();
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
-                                                title="Export Profile"
-                                            >
-                                                <Download size={14} />
-                                            </button>
-                                            <button
-                                                onClick={() => {
-                                                    const isLastProfile = Object.keys(profiles).length === 1;
-                                                    const message = isLastProfile
-                                                        ? "This is the last profile. Deleting it will reset the app to a default state. Are you sure?"
-                                                        : `Are you sure you want to delete profile "${profile.name}"?`;
-
-                                                    if (confirm(message)) {
-                                                        deleteProfile(profile.id);
-                                                    }
-                                                }}
-                                                className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                                title="Delete Profile"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
+                                        {editingProfileId !== profile.id && (
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <button
+                                                    onClick={() => {
+                                                        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(profile));
+                                                        const downloadAnchorNode = document.createElement('a');
+                                                        downloadAnchorNode.setAttribute("href", dataStr);
+                                                        downloadAnchorNode.setAttribute("download", `quiz-profile-${profile.name.toLowerCase().replace(/\s+/g, '-')}.json`);
+                                                        document.body.appendChild(downloadAnchorNode);
+                                                        downloadAnchorNode.click();
+                                                        downloadAnchorNode.remove();
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
+                                                    title="Export Profile"
+                                                >
+                                                    <Download size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        const isLastProfile = Object.keys(profiles).length === 1;
+                                                        
+                                                        if (settings.confirmProfileDelete) {
+                                                            // Confirmation enabled: use type-to-confirm modal
+                                                            setDeleteProfileConfirm({id: profile.id, name: profile.name});
+                                                            setDeleteProfileInput('');
+                                                        } else if (isLastProfile) {
+                                                            // Last profile with confirmation disabled: use browser confirm
+                                                            if (confirm("This is the last profile. Deleting it will reset the app to default state. Are you sure?")) {
+                                                                deleteProfile(profile.id);
+                                                            }
+                                                        } else {
+                                                            // Normal profile with confirmation disabled: delete immediately
+                                                            deleteProfile(profile.id);
+                                                        }
+                                                    }}
+                                                    className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                                    title="Delete Profile"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
@@ -477,31 +587,13 @@ export const RightSidebar: React.FC = () => {
                             </button>
                             <label className="flex items-center justify-center gap-2 p-2 border border-dashed border-slate-300 dark:border-slate-600 rounded-lg text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all text-xs font-medium cursor-pointer">
                                 <Upload size={14} />
-                                Import Profile
+                                Import Data
                                 <input
                                     type="file"
                                     accept=".json"
                                     className="hidden"
                                     onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        const reader = new FileReader();
-                                        reader.onload = (event) => {
-                                            try {
-                                                const content = event.target?.result as string;
-                                                const parsed = JSON.parse(content);
-                                                if (parsed.id && parsed.name && Array.isArray(parsed.subjects)) {
-                                                    importProfile(parsed);
-                                                    alert(`Profile "${parsed.name}" imported successfully!`);
-                                                } else {
-                                                    throw new Error("Invalid profile format");
-                                                }
-                                            } catch (err) {
-                                                alert("Failed to import profile: " + (err instanceof Error ? err.message : 'Unknown error'));
-                                            }
-                                        };
-                                        reader.readAsText(file);
-                                        e.target.value = ''; // Reset input
+                                        handleFileUpload(e, true);
                                     }}
                                 />
                             </label>
@@ -517,6 +609,41 @@ export const RightSidebar: React.FC = () => {
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Theme</span>
                             <ThemeToggle />
                         </div>
+                    </div>
+
+                    {/* Behavior */}
+                    <div className="space-y-3">
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Behavior</h3>
+                        <label className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                            <div>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 block">Confirm Subject Deletion</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">Require typing name to delete</span>
+                            </div>
+                            <div className="relative flex items-center">
+                                <input
+                                    type="checkbox"
+                                    className="peer sr-only"
+                                    checked={settings.confirmSubjectDelete}
+                                    onChange={(e) => setConfirmSubjectDelete(e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 dark:peer-focus:ring-indigo-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </div>
+                        </label>
+                        <label className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer">
+                            <div>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 block">Confirm Profile Deletion</span>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">Require typing name to delete</span>
+                            </div>
+                            <div className="relative flex items-center">
+                                <input
+                                    type="checkbox"
+                                    className="peer sr-only"
+                                    checked={settings.confirmProfileDelete}
+                                    onChange={(e) => setConfirmProfileDelete(e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 dark:peer-focus:ring-indigo-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </div>
+                        </label>
                     </div>
 
                     {/* Data Management */}
@@ -548,6 +675,60 @@ export const RightSidebar: React.FC = () => {
                             <AlertCircle size={16} />
                             Wipe All Data (Factory Reset)
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Profile Confirmation Modal */}
+            {deleteProfileConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Delete Profile</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                            This will permanently delete <strong className="text-slate-900 dark:text-white">{deleteProfileConfirm.name}</strong> and all its subjects, progress, and settings.
+                            {Object.keys(profiles).length === 1 && (
+                                <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                                    This is your last profile. Deleting it will reset the app to default state.
+                                </span>
+                            )}
+                        </p>
+                        <div className="space-y-2">
+                            <label className="text-sm text-slate-600 dark:text-slate-400">
+                                Type <strong className="text-red-600 dark:text-red-400">{deleteProfileConfirm.name}</strong> to confirm:
+                            </label>
+                            <input
+                                type="text"
+                                value={deleteProfileInput}
+                                onChange={(e) => setDeleteProfileInput(e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                                placeholder="Type profile name..."
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => {
+                                    setDeleteProfileConfirm(null);
+                                    setDeleteProfileInput('');
+                                }}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (deleteProfileInput === deleteProfileConfirm.name) {
+                                        deleteProfile(deleteProfileConfirm.id);
+                                        setDeleteProfileConfirm(null);
+                                        setDeleteProfileInput('');
+                                    }
+                                }}
+                                disabled={deleteProfileInput !== deleteProfileConfirm.name}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-900 disabled:cursor-not-allowed rounded-lg transition-colors"
+                            >
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

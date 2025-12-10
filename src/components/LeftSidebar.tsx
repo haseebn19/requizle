@@ -1,12 +1,14 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery} from '../utils/quizLogic';
-import {CheckCircle2, Circle} from 'lucide-react';
+import {CheckCircle2, Circle, Trash2} from 'lucide-react';
 import {clsx} from 'clsx';
 import {Logo} from './Logo';
 
 export const LeftSidebar: React.FC = () => {
-    const {profiles, activeProfileId, startSession, toggleTopic, setIncludeMastered} = useQuizStore();
+    const {profiles, activeProfileId, startSession, toggleTopic, setIncludeMastered, deleteSubject, settings} = useQuizStore();
+    const [deleteConfirm, setDeleteConfirm] = useState<{id: string; name: string} | null>(null);
+    const [deleteInput, setDeleteInput] = useState('');
     const activeProfile = profiles[activeProfileId];
     const {subjects, progress, session} = activeProfile;
 
@@ -27,41 +29,62 @@ export const LeftSidebar: React.FC = () => {
             <div className="space-y-4">
                 <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Subjects</h2>
                 <div className="space-y-2">
-                    {subjects.map(subject => {
-                        const isActive = session.subjectId === subject.id;
-                        const allQuestions = subject.topics.flatMap(t => t.questions);
+                        {subjects.map(subject => {
+                            const isActive = session.subjectId === subject.id;
+                            const allQuestions = subject.topics.flatMap(t => t.questions);
 
-                        const flatProgress = Object.values(progress[subject.id] || {}).reduce((acc, val) => ({...acc, ...val}), {});
-                        const masteryPct = calculateMastery(allQuestions, flatProgress);
+                            const flatProgress = Object.values(progress[subject.id] || {}).reduce((acc, val) => ({...acc, ...val}), {});
+                            const masteryPct = calculateMastery(allQuestions, flatProgress);
 
-                        return (
-                            <button
-                                key={subject.id}
-                                onClick={() => startSession(subject.id)}
-                                className={clsx(
-                                    "w-full text-left p-3 rounded-xl transition-all duration-200 group",
-                                    isActive
-                                        ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 ring-1 ring-indigo-200 dark:ring-indigo-800"
-                                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                                )}
-                            >
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className={clsx("font-medium", isActive ? "text-indigo-900 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300")}>
-                                        {subject.name}
-                                    </span>
-                                    <span className={clsx("text-xs font-bold px-2 py-0.5 rounded-full",
-                                        masteryPct === 100 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-                                    )}>
-                                        {masteryPct}%
-                                    </span>
+                            return (
+                                <div
+                                    key={subject.id}
+                                    className={clsx(
+                                        "w-full text-left p-3 rounded-xl transition-all duration-200 group relative",
+                                        isActive
+                                            ? "bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 ring-1 ring-indigo-200 dark:ring-indigo-800"
+                                            : "hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+                                    )}
+                                >
+                                    <button
+                                        onClick={() => !isActive && startSession(subject.id)}
+                                        className="w-full text-left"
+                                    >
+                                        <div className="flex justify-between items-start mb-1 gap-2">
+                                            <span className={clsx("font-medium", isActive ? "text-indigo-900 dark:text-indigo-300" : "text-slate-700 dark:text-slate-300")}>
+                                                {subject.name}
+                                            </span>
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <span className={clsx("text-xs font-bold px-2 py-0.5 rounded-full",
+                                                    masteryPct === 100 ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                                )}>
+                                                    {masteryPct}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="text-xs text-slate-500 flex gap-3">
+                                            <span>{subject.topics.length} topics</span>
+                                            <span>{allQuestions.length} questions</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (settings.confirmSubjectDelete) {
+                                                setDeleteConfirm({id: subject.id, name: subject.name});
+                                                setDeleteInput('');
+                                            } else {
+                                                deleteSubject(subject.id);
+                                            }
+                                        }}
+                                        className="absolute bottom-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                                        title="Delete subject"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
                                 </div>
-                                <div className="text-xs text-slate-500 flex gap-3">
-                                    <span>{subject.topics.length} topics</span>
-                                    <span>{allQuestions.length} questions</span>
-                                </div>
-                            </button>
-                        );
-                    })}
+                            );
+                        })}
                     {subjects.length === 0 && (
                         <p className="text-sm text-slate-400 italic">No subjects loaded.</p>
                     )}
@@ -131,6 +154,55 @@ export const LeftSidebar: React.FC = () => {
                                 <span className="block text-xs text-slate-400 dark:text-slate-500 font-normal">Practice mode</span>
                             </span>
                         </label>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirm && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Delete Subject</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                            This will permanently delete <strong className="text-slate-900 dark:text-white">{deleteConfirm.name}</strong> and all its topics, questions, and progress.
+                        </p>
+                        <div className="space-y-2">
+                            <label className="text-sm text-slate-600 dark:text-slate-400">
+                                Type <strong className="text-red-600 dark:text-red-400">{deleteConfirm.name}</strong> to confirm:
+                            </label>
+                            <input
+                                type="text"
+                                value={deleteInput}
+                                onChange={(e) => setDeleteInput(e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                                placeholder="Type subject name..."
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => {
+                                    setDeleteConfirm(null);
+                                    setDeleteInput('');
+                                }}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (deleteInput === deleteConfirm.name) {
+                                        deleteSubject(deleteConfirm.id);
+                                        setDeleteConfirm(null);
+                                        setDeleteInput('');
+                                    }
+                                }}
+                                disabled={deleteInput !== deleteConfirm.name}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-900 disabled:cursor-not-allowed rounded-lg transition-colors"
+                            >
+                                Delete
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
