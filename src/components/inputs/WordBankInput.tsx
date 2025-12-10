@@ -83,10 +83,10 @@ export const WordBankInput: React.FC<Props> = ({question, onAnswer, disabled, su
                                     "inline-flex items-center justify-center min-w-[100px] h-10 mx-1 px-3 rounded-lg border-b-2 transition-all align-middle",
                                     filledSlots[i]
                                         ? "bg-indigo-100 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-600 text-indigo-800 dark:text-indigo-300 font-medium hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400 group"
-                                        : "bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                                        : "bg-slate-200/60 dark:bg-slate-600/40 border-slate-400 dark:border-slate-400"
                                 )}
                             >
-                                {filledSlots[i] || <span className="w-full h-0.5 bg-slate-200 dark:bg-slate-600"></span>}
+                                {filledSlots[i] || <span className="w-full h-0.5 bg-slate-400 dark:bg-slate-400 rounded"></span>}
                             </button>
                         )}
                     </React.Fragment>

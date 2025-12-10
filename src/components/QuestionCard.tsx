@@ -164,7 +164,18 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                                         {question.type === 'multiple_choice' && question.choices[question.answerIndex]}
                                                         {question.type === 'multiple_answer' && question.answerIndices.map(i => question.choices[i]).join(', ')}
                                                         {question.type === 'true_false' && (question.answer ? 'True' : 'False')}
-                                                        {question.type === 'keywords' && (Array.isArray(question.answer) ? question.answer.join(' or ') : question.answer)}
+                                                        {question.type === 'keywords' && (
+                                                            <span className="flex flex-wrap gap-2 mt-1">
+                                                                {(Array.isArray(question.answer) ? question.answer : [question.answer]).map((keyword, i, arr) => (
+                                                                    <React.Fragment key={i}>
+                                                                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-semibold">
+                                                                            {keyword}
+                                                                        </span>
+                                                                        {i < arr.length - 1 && <span className="text-slate-400 self-center">or</span>}
+                                                                    </React.Fragment>
+                                                                ))}
+                                                            </span>
+                                                        )}
                                                         {question.type === 'matching' && (
                                                             <ul className="list-disc pl-4 mt-1 space-y-1">
                                                                 {question.pairs.map((pair, i) => (
