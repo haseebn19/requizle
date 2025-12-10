@@ -4,13 +4,20 @@ import type {Subject, SessionState, StudyMode, QuestionProgress, Profile} from '
 import {generateQueue, getActiveQuestions, checkAnswer} from '../utils/quizLogic';
 import {v4 as uuidv4} from 'uuid';
 
+interface Settings {
+    confirmSubjectDelete: boolean;
+    confirmProfileDelete: boolean;
+}
+
 interface QuizState {
     profiles: Record<string, Profile>;
     activeProfileId: string;
+    settings: Settings;
 
     // Actions
     setSubjects: (subjects: Subject[]) => void;
     importSubjects: (newSubjects: Subject[]) => void;
+    deleteSubject: (subjectId: string) => void;
 
     startSession: (subjectId: string) => void;
     toggleTopic: (topicId: string) => void;
@@ -26,10 +33,15 @@ interface QuizState {
 
     // Profile Actions
     createProfile: (name: string) => void;
+    renameProfile: (id: string, newName: string) => void;
     switchProfile: (id: string) => void;
     deleteProfile: (id: string) => void;
     importProfile: (profile: Profile) => void;
     resetAllData: () => void;
+
+    // Settings Actions
+    setConfirmSubjectDelete: (confirm: boolean) => void;
+    setConfirmProfileDelete: (confirm: boolean) => void;
 }
 
 // Helper to get current profile
@@ -75,6 +87,10 @@ export const useQuizStore = create<QuizState>()(
                 }
             },
             activeProfileId: DEFAULT_PROFILE_ID,
+            settings: {
+                confirmSubjectDelete: true,
+                confirmProfileDelete: true
+            },
 
             setSubjects: (subjects) => set((state) => {
                 const profile = getCurrentProfile(state);
@@ -91,12 +107,99 @@ export const useQuizStore = create<QuizState>()(
 
             importSubjects: (newSubjects) => set((state) => {
                 const profile = getCurrentProfile(state);
+                
+                // Merge subjects: update existing, add new
+                const mergedSubjects = [...profile.subjects];
+                
+                for (const newSubject of newSubjects) {
+                    const existingIndex = mergedSubjects.findIndex(s => s.id === newSubject.id);
+                    
+                    if (existingIndex === -1) {
+                        // Subject doesn't exist, add it
+                        mergedSubjects.push(newSubject);
+                    } else {
+                        // Subject exists, merge topics
+                        const existingSubject = mergedSubjects[existingIndex];
+                        const mergedTopics = [...existingSubject.topics];
+                        
+                        for (const newTopic of newSubject.topics) {
+                            const existingTopicIndex = mergedTopics.findIndex(t => t.id === newTopic.id);
+                            
+                            if (existingTopicIndex === -1) {
+                                // Topic doesn't exist, add it
+                                mergedTopics.push(newTopic);
+                            } else {
+                                // Topic exists, merge questions
+                                const existingTopic = mergedTopics[existingTopicIndex];
+                                const mergedQuestions = [...existingTopic.questions];
+                                
+                                for (const newQuestion of newTopic.questions) {
+                                    const existingQuestionIndex = mergedQuestions.findIndex(q => q.id === newQuestion.id);
+                                    
+                                    if (existingQuestionIndex === -1) {
+                                        // Question doesn't exist, add it
+                                        mergedQuestions.push(newQuestion);
+                                    } else {
+                                        // Question exists, overwrite it
+                                        mergedQuestions[existingQuestionIndex] = newQuestion;
+                                    }
+                                }
+                                
+                                mergedTopics[existingTopicIndex] = {
+                                    ...existingTopic,
+                                    ...newTopic,
+                                    questions: mergedQuestions
+                                };
+                            }
+                        }
+                        
+                        mergedSubjects[existingIndex] = {
+                            ...existingSubject,
+                            ...newSubject,
+                            topics: mergedTopics
+                        };
+                    }
+                }
+                
                 return {
                     profiles: {
                         ...state.profiles,
                         [state.activeProfileId]: {
                             ...profile,
-                            subjects: [...profile.subjects, ...newSubjects]
+                            subjects: mergedSubjects
+                        }
+                    }
+                };
+            }),
+
+            deleteSubject: (subjectId) => set((state) => {
+                const profile = getCurrentProfile(state);
+                const newSubjects = profile.subjects.filter(s => s.id !== subjectId);
+                
+                // Also remove progress for this subject
+                const newProgress = {...profile.progress};
+                delete newProgress[subjectId];
+                
+                // If we're deleting the current subject, clear the session
+                let newSession = profile.session;
+                if (profile.session.subjectId === subjectId) {
+                    newSession = {
+                        ...profile.session,
+                        subjectId: null,
+                        selectedTopicIds: [],
+                        queue: [],
+                        currentQuestionId: null
+                    };
+                }
+                
+                return {
+                    profiles: {
+                        ...state.profiles,
+                        [state.activeProfileId]: {
+                            ...profile,
+                            subjects: newSubjects,
+                            progress: newProgress,
+                            session: newSession
                         }
                     }
                 };
@@ -476,7 +579,7 @@ export const useQuizStore = create<QuizState>()(
                 const newProfile: Profile = {
                     id: newId,
                     name,
-                    subjects: [], // Should we copy default subjects? Maybe not.
+                    subjects: [],
                     progress: {},
                     session: {
                         subjectId: null,
@@ -493,6 +596,23 @@ export const useQuizStore = create<QuizState>()(
                     profiles: {...state.profiles, [newId]: newProfile},
                     activeProfileId: newId
                 }));
+            },
+
+            renameProfile: (id, newName) => {
+                set(state => {
+                    const profile = state.profiles[id];
+                    if (!profile) return state;
+                    
+                    return {
+                        profiles: {
+                            ...state.profiles,
+                            [id]: {
+                                ...profile,
+                                name: newName
+                            }
+                        }
+                    };
+                });
             },
 
             switchProfile: (id) => {
@@ -550,19 +670,108 @@ export const useQuizStore = create<QuizState>()(
             },
 
             importProfile: (profile) => {
-                set(state => ({
-                    profiles: {
-                        ...state.profiles,
-                        [profile.id]: profile
-                    },
-                    activeProfileId: profile.id
-                }));
+                set(state => {
+                    const existingProfile = state.profiles[profile.id];
+                    
+                    if (!existingProfile) {
+                        // Profile doesn't exist, add it directly
+                        return {
+                            profiles: {
+                                ...state.profiles,
+                                [profile.id]: profile
+                            },
+                            activeProfileId: profile.id
+                        };
+                    }
+                    
+                    // Profile exists, merge it
+                    // Merge subjects using the same logic
+                    const mergedSubjects = [...existingProfile.subjects];
+                    
+                    for (const newSubject of profile.subjects) {
+                        const existingIndex = mergedSubjects.findIndex(s => s.id === newSubject.id);
+                        
+                        if (existingIndex === -1) {
+                            mergedSubjects.push(newSubject);
+                        } else {
+                            const existingSubject = mergedSubjects[existingIndex];
+                            const mergedTopics = [...existingSubject.topics];
+                            
+                            for (const newTopic of newSubject.topics) {
+                                const existingTopicIndex = mergedTopics.findIndex(t => t.id === newTopic.id);
+                                
+                                if (existingTopicIndex === -1) {
+                                    mergedTopics.push(newTopic);
+                                } else {
+                                    const existingTopic = mergedTopics[existingTopicIndex];
+                                    const mergedQuestions = [...existingTopic.questions];
+                                    
+                                    for (const newQuestion of newTopic.questions) {
+                                        const existingQuestionIndex = mergedQuestions.findIndex(q => q.id === newQuestion.id);
+                                        
+                                        if (existingQuestionIndex === -1) {
+                                            mergedQuestions.push(newQuestion);
+                                        } else {
+                                            mergedQuestions[existingQuestionIndex] = newQuestion;
+                                        }
+                                    }
+                                    
+                                    mergedTopics[existingTopicIndex] = {
+                                        ...existingTopic,
+                                        ...newTopic,
+                                        questions: mergedQuestions
+                                    };
+                                }
+                            }
+                            
+                            mergedSubjects[existingIndex] = {
+                                ...existingSubject,
+                                ...newSubject,
+                                topics: mergedTopics
+                            };
+                        }
+                    }
+                    
+                    // Merge progress: keep existing, overwrite with imported
+                    const mergedProgress = {...existingProfile.progress};
+                    for (const [subjectId, subjectProgress] of Object.entries(profile.progress)) {
+                        if (!mergedProgress[subjectId]) {
+                            mergedProgress[subjectId] = subjectProgress;
+                        } else {
+                            mergedProgress[subjectId] = {
+                                ...mergedProgress[subjectId],
+                                ...subjectProgress
+                            };
+                        }
+                    }
+                    
+                    return {
+                        profiles: {
+                            ...state.profiles,
+                            [profile.id]: {
+                                ...existingProfile,
+                                ...profile,
+                                subjects: mergedSubjects,
+                                progress: mergedProgress
+                            }
+                        },
+                        activeProfileId: profile.id
+                    };
+                });
             },
 
             resetAllData: () => {
                 localStorage.removeItem('quiz-storage');
                 window.location.reload();
-            }
+            },
+
+            setConfirmSubjectDelete: (confirm) => set((state) => ({ 
+                settings: { ...state.settings, confirmSubjectDelete: confirm } 
+            })),
+
+            setConfirmProfileDelete: (confirm) => set((state) => ({ 
+                settings: { ...state.settings, confirmProfileDelete: confirm } 
+            }))
         }),
         {
             name: 'quiz-storage',
