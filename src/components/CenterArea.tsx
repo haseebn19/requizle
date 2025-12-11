@@ -28,11 +28,11 @@ export const CenterArea: React.FC = () => {
 
     if (!currentSubject) {
         return (
-            <div className="flex-1 flex flex-col items-center justify-center p-10 text-center text-slate-400 dark:text-slate-500">
-                <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
-                    <ListOrdered size={40} className="opacity-20" />
+            <div className="flex-1 flex flex-col items-center justify-center p-10 text-center text-slate-500 dark:text-slate-400">
+                <div className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-6">
+                    <ListOrdered size={40} className="text-indigo-400 dark:text-indigo-500" />
                 </div>
-                <h2 className="text-xl font-semibold text-slate-600 dark:text-slate-300 mb-2">Ready to study?</h2>
+                <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-200 mb-2">Ready to study?</h2>
                 <p>Select a subject from the sidebar to begin.</p>
             </div>
         );

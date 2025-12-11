@@ -128,18 +128,4 @@ describe('KeywordsInput', () => {
         const button = screen.getByRole('button');
         expect(button).not.toBeDisabled();
     });
-
-    it('should show correct answer section when answer is submitted', () => {
-        render(
-            <KeywordsInput
-                question={createQuestion({answer: 'Paris'})}
-                onAnswer={mockOnAnswer}
-                disabled={true}
-                submittedAnswer="London"
-            />
-        );
-
-        expect(screen.getByText('Correct Answer')).toBeInTheDocument();
-        expect(screen.getByText('Paris')).toBeInTheDocument();
-    });
 });

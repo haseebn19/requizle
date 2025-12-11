@@ -3,6 +3,7 @@ import type {MultipleAnswerQuestion} from '../../types';
 import {clsx} from 'clsx';
 import {motion} from 'framer-motion';
 import {CheckSquare, Square} from 'lucide-react';
+import {Latex} from '../Latex';
 
 interface Props {
     question: MultipleAnswerQuestion;
@@ -97,7 +98,7 @@ export const MultipleAnswerInput: React.FC<Props> = ({question, onAnswer, disabl
                             )}>
                                 {isSelected ? <CheckSquare size={24} /> : <Square size={24} />}
                             </div>
-                            <span className="text-lg font-medium">{choice}</span>
+                            <span className="text-lg font-medium"><Latex>{choice}</Latex></span>
                         </motion.button>
                     );
                 })}

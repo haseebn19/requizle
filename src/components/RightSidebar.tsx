@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import {createPortal} from 'react-dom';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery, getActiveQuestions} from '../utils/quizLogic';
 import {Upload, Trash2, AlertCircle, Download, Plus, ExternalLink, Pencil, Check, X} from 'lucide-react';
@@ -29,6 +30,8 @@ export const RightSidebar: React.FC = () => {
     const [editingName, setEditingName] = useState('');
     const [deleteProfileConfirm, setDeleteProfileConfirm] = useState<{id: string; name: string} | null>(null);
     const [deleteProfileInput, setDeleteProfileInput] = useState('');
+    const [factoryResetConfirm, setFactoryResetConfirm] = useState(false);
+    const [factoryResetInput, setFactoryResetInput] = useState('');
 
     const currentProfile = profiles[activeProfileId];
     const {subjects, progress, session} = currentProfile;
@@ -224,7 +227,7 @@ export const RightSidebar: React.FC = () => {
     };
 
     // Detect if data is a profile or subjects and import accordingly
-    const detectAndImport = (parsed: unknown): { type: 'profile' | 'subjects'; message: string } => {
+    const detectAndImport = (parsed: unknown): {type: 'profile' | 'subjects'; message: string} => {
         // Check if it's a profile (has profile-specific fields)
         if (
             typeof parsed === 'object' &&
@@ -235,12 +238,12 @@ export const RightSidebar: React.FC = () => {
             'progress' in parsed &&
             'session' in parsed
         ) {
-            const profile = parsed as { id: string; name: string; subjects: unknown[]; progress: unknown; session: unknown };
+            const profile = parsed as {id: string; name: string; subjects: unknown[]; progress: unknown; session: unknown};
             if (typeof profile.id === 'string' && typeof profile.name === 'string' && Array.isArray(profile.subjects)) {
                 const existingProfile = profiles[profile.id];
                 importProfile(profile as Parameters<typeof importProfile>[0]);
                 const action = existingProfile ? 'merged with existing' : 'imported';
-                return { type: 'profile', message: `Profile "${profile.name}" ${action} successfully!` };
+                return {type: 'profile', message: `Profile "${profile.name}" ${action} successfully!`};
             }
         }
 
@@ -249,9 +252,9 @@ export const RightSidebar: React.FC = () => {
         const existingSubjectIds = currentProfile.subjects.map(s => s.id);
         const mergedCount = validatedSubjects.filter(s => existingSubjectIds.includes(s.id)).length;
         const newCount = validatedSubjects.length - mergedCount;
-        
+
         importSubjects(validatedSubjects);
-        
+
         let message = '';
         if (mergedCount > 0 && newCount > 0) {
             message = `Merged ${mergedCount} existing subject(s) and added ${newCount} new subject(s)`;
@@ -260,8 +263,8 @@ export const RightSidebar: React.FC = () => {
         } else {
             message = `Added ${newCount} new subject(s)`;
         }
-        
-        return { type: 'subjects', message };
+
+        return {type: 'subjects', message};
     };
 
     const handleImport = () => {
@@ -535,7 +538,7 @@ export const RightSidebar: React.FC = () => {
                                                 <button
                                                     onClick={() => {
                                                         const isLastProfile = Object.keys(profiles).length === 1;
-                                                        
+
                                                         if (settings.confirmProfileDelete) {
                                                             // Confirmation enabled: use type-to-confirm modal
                                                             setDeleteProfileConfirm({id: profile.id, name: profile.name});
@@ -666,9 +669,8 @@ export const RightSidebar: React.FC = () => {
 
                         <button
                             onClick={() => {
-                                if (confirm('WARNING: This will wipe ALL application data and reset to a fresh state. This cannot be undone. Are you sure?')) {
-                                    resetAllData();
-                                }
+                                setFactoryResetConfirm(true);
+                                setFactoryResetInput('');
                             }}
                             className="w-full flex items-center justify-center gap-2 p-3 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium"
                         >
@@ -680,7 +682,7 @@ export const RightSidebar: React.FC = () => {
             )}
 
             {/* Delete Profile Confirmation Modal */}
-            {deleteProfileConfirm && (
+            {deleteProfileConfirm && createPortal(
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">Delete Profile</h3>
@@ -730,7 +732,67 @@ export const RightSidebar: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Factory Reset Confirmation Modal */}
+            {factoryResetConfirm && createPortal(
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+                        <h3 className="text-lg font-bold text-red-600 dark:text-red-400">⚠️ Factory Reset</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                            This will <strong className="text-red-600 dark:text-red-400">permanently delete ALL data</strong> including:
+                        </p>
+                        <ul className="text-sm text-slate-600 dark:text-slate-400 list-disc pl-5 space-y-1">
+                            <li>All profiles</li>
+                            <li>All subjects and questions</li>
+                            <li>All progress and mastery data</li>
+                            <li>All settings</li>
+                        </ul>
+                        <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                            This action cannot be undone!
+                        </p>
+                        <div className="space-y-2">
+                            <label className="text-sm text-slate-600 dark:text-slate-400">
+                                Type <strong className="text-red-600 dark:text-red-400">RESET</strong> to confirm:
+                            </label>
+                            <input
+                                type="text"
+                                value={factoryResetInput}
+                                onChange={(e) => setFactoryResetInput(e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                                placeholder="Type RESET..."
+                                autoFocus
+                            />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => {
+                                    setFactoryResetConfirm(false);
+                                    setFactoryResetInput('');
+                                }}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (factoryResetInput === 'RESET') {
+                                        resetAllData();
+                                        setFactoryResetConfirm(false);
+                                        setFactoryResetInput('');
+                                    }
+                                }}
+                                disabled={factoryResetInput !== 'RESET'}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 dark:disabled:bg-red-900 disabled:cursor-not-allowed rounded-lg transition-colors"
+                            >
+                                Wipe All Data
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     );
