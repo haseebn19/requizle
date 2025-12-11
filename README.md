@@ -33,27 +33,17 @@ ReQuizle is a modern web application designed to help users study efficiently th
 
 ## Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/haseebn19/ReQuizle.git
-   ```
-
-2. Navigate to the project directory:
-   ```bash
-   cd ReQuizle
-   ```
-
-3. Install the required dependencies:
-   ```bash
-   npm install
-   ```
-
-4. Start the development server:
-   ```bash
-   npm run dev
-   ```
+```bash
+git clone https://github.com/haseebn19/ReQuizle.git
+cd ReQuizle
+npm install
+```
 
 ## Usage
+
+```bash
+npm run dev
+```
 
 1. **Select a Subject**:
    - Choose a subject from the left sidebar
@@ -164,47 +154,75 @@ All questions require: `id`, `type`, `topicId`, `prompt`
 
 Optional: `explanation` (shown after answering)
 
-## Building for Production
+## Development
 
-To create a production build:
+### Setup
+
+```bash
+npm install
+```
+
+### Testing
+
+```bash
+npm test
+```
+
+Run tests with coverage report:
+
+```bash
+npm run test:coverage
+```
+
+### Linting
+
+```bash
+npm run lint
+```
+
+## Building
+
 ```bash
 npm run build
 ```
 
 The build files will be created in the `dist` directory.
 
-## Testing
+## Project Structure
 
-Run the test suite:
-```bash
-npm test
 ```
-
-Run tests with coverage report:
-```bash
-npm run test:coverage
+requizle/
+├── src/
+│   ├── components/       # React components
+│   │   └── inputs/       # Question type input components
+│   ├── context/          # React context providers
+│   ├── store/            # Zustand state management
+│   ├── test/             # Test setup
+│   ├── utils/            # Utility functions
+│   ├── App.tsx           # Main application component
+│   ├── main.tsx          # Application entry point
+│   ├── types.ts          # TypeScript type definitions
+│   └── index.css         # Global styles
+├── public/               # Static assets
+├── .github/workflows/    # CI/CD configuration
+└── dist/                 # Production build output
 ```
 
 ## Contributing
 
-If you'd like to contribute to ReQuizle or have suggestions for improvements, please fork the repository and create a pull request.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## Credits
 
-This project uses open-source libraries:
 - [React](https://react.dev/) - UI framework
 - [Zustand](https://github.com/pmndrs/zustand) - State management
 - [Framer Motion](https://www.framer.com/motion/) - Animations
 - [TailwindCSS](https://tailwindcss.com/) - Styling
 - [Lucide](https://lucide.dev/) - Icons
-
----
 
 ## License
 
