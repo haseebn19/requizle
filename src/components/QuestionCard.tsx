@@ -7,6 +7,7 @@ import {TrueFalseInput} from './inputs/TrueFalseInput';
 import {KeywordsInput} from './inputs/KeywordsInput';
 import {MatchingInput} from './inputs/MatchingInput';
 import {WordBankInput} from './inputs/WordBankInput';
+import {Latex} from './Latex';
 import {motion, AnimatePresence} from 'framer-motion';
 import confetti from 'canvas-confetti';
 import {ArrowRight, SkipForward, AlertCircle, CheckCircle2} from 'lucide-react';
@@ -79,7 +80,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                             )}
                         </div>
                         <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-relaxed">
-                            {question.prompt}
+                            <Latex>{question.prompt}</Latex>
                         </h2>
                     </div>
 
@@ -154,22 +155,42 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                             </h3>
                                             {result.explanation && (
                                                 <p className="mt-2 text-slate-600 dark:text-slate-300 leading-relaxed">
-                                                    {result.explanation}
+                                                    <Latex>{result.explanation}</Latex>
                                                 </p>
                                             )}
                                             {!result.correct && (
                                                 <div className="mt-3 p-3 bg-white dark:bg-slate-900/50 rounded-lg border border-red-100 dark:border-red-900/30 text-sm">
                                                     <span className="font-semibold text-red-800 dark:text-red-300 block mb-1">Correct Answer:</span>
                                                     <span className="text-slate-700 dark:text-slate-300 font-medium">
-                                                        {question.type === 'multiple_choice' && question.choices[question.answerIndex]}
-                                                        {question.type === 'multiple_answer' && question.answerIndices.map(i => question.choices[i]).join(', ')}
-                                                        {question.type === 'true_false' && (question.answer ? 'True' : 'False')}
+                                                        {question.type === 'multiple_choice' && (
+                                                            <span className="inline-flex mt-1">
+                                                                <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-semibold">
+                                                                    <Latex>{question.choices[question.answerIndex]}</Latex>
+                                                                </span>
+                                                            </span>
+                                                        )}
+                                                        {question.type === 'multiple_answer' && (
+                                                            <span className="flex flex-wrap gap-2 mt-1">
+                                                                {question.answerIndices.map((i) => (
+                                                                    <span key={i} className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-semibold">
+                                                                        <Latex>{question.choices[i]}</Latex>
+                                                                    </span>
+                                                                ))}
+                                                            </span>
+                                                        )}
+                                                        {question.type === 'true_false' && (
+                                                            <span className="inline-flex mt-1">
+                                                                <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-semibold">
+                                                                    {question.answer ? 'True' : 'False'}
+                                                                </span>
+                                                            </span>
+                                                        )}
                                                         {question.type === 'keywords' && (
                                                             <span className="flex flex-wrap gap-2 mt-1">
                                                                 {(Array.isArray(question.answer) ? question.answer : [question.answer]).map((keyword, i, arr) => (
                                                                     <React.Fragment key={i}>
                                                                         <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-semibold">
-                                                                            {keyword}
+                                                                            <Latex>{keyword}</Latex>
                                                                         </span>
                                                                         {i < arr.length - 1 && <span className="text-slate-400 self-center">or</span>}
                                                                     </React.Fragment>
@@ -177,13 +198,19 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                                             </span>
                                                         )}
                                                         {question.type === 'matching' && (
-                                                            <ul className="list-disc pl-4 mt-1 space-y-1">
+                                                            <div className="flex flex-col gap-2 mt-1">
                                                                 {question.pairs.map((pair, i) => (
-                                                                    <li key={i}>
-                                                                        <span className="font-semibold">{pair.left}</span> → {pair.right}
-                                                                    </li>
+                                                                    <div key={i} className="flex items-center gap-2 flex-wrap">
+                                                                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-semibold">
+                                                                            <Latex>{pair.left}</Latex>
+                                                                        </span>
+                                                                        <span className="text-slate-400">→</span>
+                                                                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-semibold">
+                                                                            <Latex>{pair.right}</Latex>
+                                                                        </span>
+                                                                    </div>
                                                                 ))}
-                                                            </ul>
+                                                            </div>
                                                         )}
                                                         {question.type === 'word_bank' && (
                                                             question.sentence.split(/(_)/g).map((part, i) => {
@@ -195,7 +222,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                                                     // The answer array corresponds to these blanks in order.
                                                                     // blankIndex = (i - 1) / 2
                                                                     const blankIndex = (i - 1) / 2;
-                                                                    return <span key={i} className="px-1.5 py-0.5 mx-0.5 bg-green-100 text-green-800 rounded font-bold">{question.answers[blankIndex]}</span>;
+                                                                    return <span key={i} className="px-1.5 py-0.5 mx-0.5 bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300 rounded font-bold"><Latex>{question.answers[blankIndex]}</Latex></span>;
                                                                 }
                                                                 return <span key={i}>{part}</span>;
                                                             })

@@ -18,6 +18,7 @@ ReQuizle is a modern web application designed to help users study efficiently th
   - Keywords
   - Matching
   - Word Bank
+- **LaTeX Support**: Render mathematical equations using `$...$` (inline) and `$$...$$` (block) syntax.
 - **Data Persistence**: Progress automatically saved to local storage.
 - **Custom Content Import**: Import your own subjects and questions via JSON.
 - **Profile Management**: Create and manage multiple study profiles.
@@ -153,6 +154,23 @@ You can import your own subjects and questions using JSON. Upload a file or past
 All questions require: `id`, `type`, `topicId`, `prompt`
 
 Optional: `explanation` (shown after answering)
+
+### LaTeX Support
+
+You can include LaTeX mathematical notation in prompts, choices, explanations, and answers:
+
+- **Inline math**: Use `$...$` syntax, e.g., `"The formula $E = mc^2$ describes..."`
+- **Block math**: Use `$$...$$` syntax for centered equations
+
+Example:
+```json
+{
+  "prompt": "Solve for $x$ in the equation $2x + 5 = 15$",
+  "choices": ["$x = 5$", "$x = 10$", "$x = 7.5$", "$x = 2$"],
+  "answerIndex": 0,
+  "explanation": "Subtract 5 from both sides: $2x = 10$, then divide by 2: $x = 5$"
+}
+```
 
 ## Development
 

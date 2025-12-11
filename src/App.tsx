@@ -87,6 +87,15 @@ const SAMPLE_SUBJECTS: Subject[] = [
             sentence: 'React uses a _ DOM to optimize _ updates.',
             wordBank: ['virtual', 'real', 'rendering', 'network', 'database'],
             answers: ['virtual', 'rendering']
+          },
+          {
+            id: 'q-latex',
+            type: 'multiple_choice',
+            topicId: 'all-types',
+            prompt: 'What is the derivative of $f(x) = x^3$?',
+            choices: ['$3x^2$', '$x^2$', '$3x$', '$x^3$'],
+            answerIndex: 0,
+            explanation: 'Using the power rule: $\\frac{d}{dx}x^n = nx^{n-1}$, so $\\frac{d}{dx}x^3 = 3x^2$'
           }
         ]
       }
