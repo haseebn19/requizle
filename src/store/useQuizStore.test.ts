@@ -242,7 +242,7 @@ describe('useQuizStore', () => {
             expect(state.profiles['default'].session.selectedTopicIds).not.toContain('t1');
         });
 
-        it('should handle multiple topic selections', () => {
+        it('should reset to empty array when all topics are selected', () => {
             const {toggleTopic} = useQuizStore.getState();
 
             act(() => {
@@ -250,9 +250,9 @@ describe('useQuizStore', () => {
                 toggleTopic('t2');
             });
 
+            // When all topics are manually selected, it resets to empty (meaning "all selected")
             const state = useQuizStore.getState();
-            expect(state.profiles['default'].session.selectedTopicIds).toContain('t1');
-            expect(state.profiles['default'].session.selectedTopicIds).toContain('t2');
+            expect(state.profiles['default'].session.selectedTopicIds).toEqual([]);
         });
 
         it('should do nothing if no subject is selected', () => {

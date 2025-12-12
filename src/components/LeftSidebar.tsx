@@ -7,7 +7,7 @@ import {clsx} from 'clsx';
 import {Logo} from './Logo';
 
 export const LeftSidebar: React.FC = () => {
-    const {profiles, activeProfileId, startSession, toggleTopic, setIncludeMastered, deleteSubject, settings} = useQuizStore();
+    const {profiles, activeProfileId, startSession, toggleTopic, selectAllTopics, setIncludeMastered, deleteSubject, settings} = useQuizStore();
     const [deleteConfirm, setDeleteConfirm] = useState<{id: string; name: string} | null>(null);
     const [deleteInput, setDeleteInput] = useState('');
     const activeProfile = profiles[activeProfileId];
@@ -99,9 +99,16 @@ export const LeftSidebar: React.FC = () => {
                         <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                             Topics in {currentSubject.name}
                         </h2>
-                        <span className="text-xs text-slate-400">
-                            {session.selectedTopicIds.length === 0 ? "All Selected" : `${session.selectedTopicIds.length} Selected`}
-                        </span>
+                        {session.selectedTopicIds.length === 0 ? (
+                            <span className="text-xs text-slate-400">All Selected</span>
+                        ) : (
+                            <button
+                                onClick={selectAllTopics}
+                                className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium transition-colors"
+                            >
+                                Select All
+                            </button>
+                        )}
                     </div>
 
                     <div className="space-y-1 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">

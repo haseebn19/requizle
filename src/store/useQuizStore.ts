@@ -1,7 +1,8 @@
 import {create} from 'zustand';
-import {persist} from 'zustand/middleware';
+import {persist, createJSONStorage} from 'zustand/middleware';
 import type {Subject, SessionState, StudyMode, QuestionProgress, Profile} from '../types';
 import {generateQueue, getActiveQuestions, checkAnswer} from '../utils/quizLogic';
+import {indexedDBStorage, clearStoreData, migrateFromLocalStorage} from '../utils/indexedDBStorage';
 import {v4 as uuidv4} from 'uuid';
 
 interface Settings {
@@ -21,6 +22,7 @@ interface QuizState {
 
     startSession: (subjectId: string) => void;
     toggleTopic: (topicId: string) => void;
+    selectAllTopics: () => void;
     setMode: (mode: StudyMode) => void;
     setIncludeMastered: (include: boolean) => void;
     restartQueue: () => void;
@@ -246,15 +248,20 @@ export const useQuizStore = create<QuizState>()(
             toggleTopic: (topicId) => {
                 set((state) => {
                     const profile = getCurrentProfile(state);
-                    const currentSelected = profile.session.selectedTopicIds;
-                    const newSelected = currentSelected.includes(topicId)
-                        ? currentSelected.filter(id => id !== topicId)
-                        : [...currentSelected, topicId];
-
-                    // Rebuild queue
                     const subject = getCurrentSubject(state);
                     if (!subject) return state;
 
+                    const currentSelected = profile.session.selectedTopicIds;
+                    let newSelected = currentSelected.includes(topicId)
+                        ? currentSelected.filter(id => id !== topicId)
+                        : [...currentSelected, topicId];
+
+                    // If all topics are now selected, reset to empty array (which means "all")
+                    if (newSelected.length === subject.topics.length) {
+                        newSelected = [];
+                    }
+
+                    // Rebuild queue
                     const questions = getActiveQuestions(subject, newSelected);
                     const queue = generateQueue(
                         questions,
@@ -271,6 +278,38 @@ export const useQuizStore = create<QuizState>()(
                                 session: {
                                     ...profile.session,
                                     selectedTopicIds: newSelected,
+                                    queue: queue.slice(1),
+                                    currentQuestionId: queue[0] || null
+                                }
+                            }
+                        }
+                    };
+                });
+            },
+
+            selectAllTopics: () => {
+                set((state) => {
+                    const profile = getCurrentProfile(state);
+                    const subject = getCurrentSubject(state);
+                    if (!subject) return state;
+
+                    // Empty array means all topics selected
+                    const questions = getActiveQuestions(subject, []);
+                    const queue = generateQueue(
+                        questions,
+                        flattenProgress(profile.progress[subject.id]),
+                        profile.session.mode,
+                        profile.session.includeMastered
+                    );
+
+                    return {
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...profile,
+                                session: {
+                                    ...profile.session,
+                                    selectedTopicIds: [],
                                     queue: queue.slice(1),
                                     currentQuestionId: queue[0] || null
                                 }
@@ -761,6 +800,9 @@ export const useQuizStore = create<QuizState>()(
             },
 
             resetAllData: () => {
+                // Clear IndexedDB store data
+                clearStoreData();
+                // Also clear localStorage (for legacy data and theme)
                 localStorage.removeItem('quiz-storage');
                 localStorage.removeItem('theme');
                 window.location.reload();
@@ -777,6 +819,14 @@ export const useQuizStore = create<QuizState>()(
         {
             name: 'quiz-storage',
             version: 1,
+            // Use IndexedDB for storage instead of localStorage to avoid quota limits
+            storage: createJSONStorage(() => indexedDBStorage),
+            // Migrate localStorage data to IndexedDB on first load
+            onRehydrateStorage: () => {
+                // Trigger migration from localStorage to IndexedDB
+                migrateFromLocalStorage('quiz-storage');
+                return undefined;
+            },
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             migrate: (persistedState: any, version: number) => {
                 if (version === 0 || version === undefined) {
@@ -809,3 +859,6 @@ export const useQuizStore = create<QuizState>()(
         }
     )
 );
+
+// Initialize: ensure migration from localStorage happens on app load
+migrateFromLocalStorage('quiz-storage');

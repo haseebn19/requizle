@@ -18,12 +18,15 @@ ReQuizle is a modern web application designed to help users study efficiently th
   - Keywords
   - Matching
   - Word Bank
-- **LaTeX Support**: Render mathematical equations using `$...$` (inline) and `$$...$$` (block) syntax.
-- **Data Persistence**: Progress automatically saved to local storage.
-- **Custom Content Import**: Import your own subjects and questions via JSON.
-- **Profile Management**: Create and manage multiple study profiles.
+- **LaTeX Support**: Render mathematical equations using `\(...\)` (inline) and `\[...\]` (block) syntax.
+- **Media Support**: Add images or videos to questions via URL, base64, or local file upload.
+- **Data Persistence**: Progress automatically saved to IndexedDB for large datasets.
+- **Custom Content Import**: Import your own subjects and questions via JSON with automatic type detection.
+- **Profile Management**: Create, rename, and manage multiple study profiles.
 - **Dark Mode**: Built-in theme toggle for comfortable studying.
 - **Responsive Design**: Works seamlessly on desktop and mobile devices.
+- **Collapsible Sidebars**: Hide sidebars for a focused study experience.
+- **Installable**: Can be installed as a Progressive Web App (PWA) on desktop and mobile.
 - **Privacy-Focused**: All data is stored locally in your browser - no server required.
 
 ## Prerequisites
@@ -61,7 +64,9 @@ npm run dev
 
 4. **Import Custom Content**:
    - Use the Import tab in the right sidebar
-   - Upload JSON files with your own subjects and questions
+   - Upload JSON files with subjects, questions, or full profiles
+   - Import type is automatically detected
+   - Imported data merges with existing content (updates existing, adds new)
 
 ## Importing Custom Content
 
@@ -153,22 +158,69 @@ You can import your own subjects and questions using JSON. Upload a file or past
 
 All questions require: `id`, `type`, `topicId`, `prompt`
 
-Optional: `explanation` (shown after answering)
+Optional fields:
+- `explanation` - Shown after answering
+- `media` - Image or video to display with the question (see Media Support below)
+
+### Media Support
+
+Questions can include images or videos that display above the prompt. Three formats are supported:
+
+#### 1. Online URLs (Recommended)
+```json
+{
+  "prompt": "What organ is highlighted in this diagram?",
+  "media": "https://example.com/anatomy-diagram.png"
+}
+```
+
+For videos:
+```json
+{
+  "prompt": "Watch the video and identify the process shown",
+  "media": "https://example.com/mitosis.mp4"
+}
+```
+
+#### 2. Base64 Data URIs
+```json
+{
+  "prompt": "Identify this structure",
+  "media": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg..."
+}
+```
+
+#### 3. Local Files (with Upload)
+Reference files by name - you'll be prompted to upload them during import:
+```json
+{
+  "prompt": "What is the capital marked on this map?",
+  "media": "europe-map.png"
+}
+```
+
+**Supported formats:**
+- **Images**: PNG, JPG, GIF, WebP, SVG
+- **Videos**: MP4, WebM, OGG, MOV, AVI, MKV
+
+When importing JSON with local media references, a modal will appear listing the required files. Select the files from your computer, and they'll be embedded into the data.
 
 ### LaTeX Support
 
-You can include LaTeX mathematical notation in prompts, choices, explanations, and answers:
+You can include LaTeX mathematical notation in prompts, choices, explanations, and answers using Anki-style delimiters:
 
-- **Inline math**: Use `$...$` syntax, e.g., `"The formula $E = mc^2$ describes..."`
-- **Block math**: Use `$$...$$` syntax for centered equations
+- **Inline math**: Use `\(...\)` syntax, e.g., `"The formula \(E = mc^2\) describes..."`
+- **Block math**: Use `\[...\]` syntax for centered equations
+
+These delimiters are used instead of `$...$` to avoid conflicts with literal dollar signs in text (e.g., "$50").
 
 Example:
 ```json
 {
-  "prompt": "Solve for $x$ in the equation $2x + 5 = 15$",
-  "choices": ["$x = 5$", "$x = 10$", "$x = 7.5$", "$x = 2$"],
+  "prompt": "Solve for \\(x\\) in the equation \\(2x + 5 = 15\\)",
+  "choices": ["\\(x = 5\\)", "\\(x = 10\\)", "\\(x = 7.5\\)", "\\(x = 2\\)"],
   "answerIndex": 0,
-  "explanation": "Subtract 5 from both sides: $2x = 10$, then divide by 2: $x = 5$"
+  "explanation": "Subtract 5 from both sides: \\(2x = 10\\), then divide by 2: \\(x = 5\\)"
 }
 ```
 

@@ -106,8 +106,10 @@ export const CenterArea: React.FC = () => {
             </div>
 
             {/* Question Area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 flex items-center justify-center">
-                <QuestionCard question={currentQuestion} />
+            <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                <div className="min-h-full flex items-center justify-center">
+                    <QuestionCard question={currentQuestion} />
+                </div>
             </div>
         </div>
     );

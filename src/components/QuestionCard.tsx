@@ -1,6 +1,7 @@
 import React, {useState, useEffect, useRef} from 'react';
 import type {Question} from '../types';
 import {useQuizStore} from '../store/useQuizStore';
+import {getMedia, isIndexedDBMedia, extractMediaId} from '../utils/mediaStorage';
 import {MultipleAnswerInput} from './inputs/MultipleAnswerInput';
 import {MultipleChoiceInput} from './inputs/MultipleChoiceInput';
 import {TrueFalseInput} from './inputs/TrueFalseInput';
@@ -22,6 +23,9 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
     const {submitAnswer, skipQuestion} = useQuizStore();
     const [submittedAnswer, setSubmittedAnswer] = useState<AnswerType | null>(null);
     const [result, setResult] = useState<{correct: boolean; explanation?: string} | null>(null);
+    const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | null>(null);
+    const [mediaLoading, setMediaLoading] = useState(false);
+    const [mediaError, setMediaError] = useState(false);
     const prevQuestionIdRef = useRef<string>(question.id);
 
     // Reset state when question changes
@@ -30,9 +34,67 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setSubmittedAnswer(null);
             setResult(null);
+            setResolvedMediaUrl(null);
+            setMediaLoading(false);
+            setMediaError(false);
             prevQuestionIdRef.current = question.id;
         }
     }, [question.id]);
+
+    // Load media from IndexedDB if needed (with retry logic)
+    useEffect(() => {
+        if (!question.media) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setResolvedMediaUrl(null);
+            setMediaLoading(false);
+            setMediaError(false);
+            return;
+        }
+
+        if (isIndexedDBMedia(question.media)) {
+            // Load from IndexedDB with retry
+            setMediaLoading(true);
+            setMediaError(false);
+            const mediaId = extractMediaId(question.media);
+
+            const maxRetries = 3;
+            const retryDelay = 500; // ms
+
+            const attemptLoad = (retryCount: number) => {
+                getMedia(mediaId).then(entry => {
+                    if (entry) {
+                        setResolvedMediaUrl(entry.data);
+                        setMediaLoading(false);
+                    } else if (retryCount < maxRetries) {
+                        // Retry after delay
+                        setTimeout(() => attemptLoad(retryCount + 1), retryDelay);
+                    } else {
+                        // Give up after max retries
+                        setResolvedMediaUrl(null);
+                        setMediaError(true);
+                        setMediaLoading(false);
+                    }
+                }).catch(() => {
+                    if (retryCount < maxRetries) {
+                        // Retry after delay
+                        setTimeout(() => attemptLoad(retryCount + 1), retryDelay);
+                    } else {
+                        // Give up after max retries
+                        setResolvedMediaUrl(null);
+                        setMediaError(true);
+                        setMediaLoading(false);
+                    }
+                });
+            };
+
+            attemptLoad(0);
+        } else {
+            // Direct URL or data URI
+            setResolvedMediaUrl(question.media);
+            setMediaLoading(false);
+            setMediaError(false);
+        }
+    }, [question.media, question.id]);
 
     const handleAnswer = (answer: AnswerType) => {
         setSubmittedAnswer(answer);
@@ -79,6 +141,67 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                 </button>
                             )}
                         </div>
+
+                        {/* Question Media (Image or Video) */}
+                        {question.media && (() => {
+                            // Show loading state while media is being loaded from IndexedDB
+                            if (mediaLoading) {
+                                return (
+                                    <div className="mb-4 flex items-center justify-center h-32 bg-slate-100 dark:bg-slate-700 rounded-lg">
+                                        <span className="text-slate-400 dark:text-slate-500 text-sm">Loading media...</span>
+                                    </div>
+                                );
+                            }
+
+                            // Show error state if media failed to load
+                            if (mediaError || !resolvedMediaUrl) {
+                                return (
+                                    <div className="mb-4 flex items-center justify-center h-24 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                                        <span className="text-red-500 dark:text-red-400 text-sm">Failed to load media</span>
+                                    </div>
+                                );
+                            }
+
+                            // Detect if it's a video based on extension or data URI
+                            const isVideo = (url: string): boolean => {
+                                const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+                                const lowerUrl = url.toLowerCase();
+
+                                // Check data URI mime type
+                                if (lowerUrl.startsWith('data:video/')) return true;
+
+                                // Check file extension
+                                return videoExtensions.some(ext => lowerUrl.includes(ext));
+                            };
+
+                            if (isVideo(resolvedMediaUrl)) {
+                                return (
+                                    <div className="mb-4">
+                                        <video
+                                            src={resolvedMediaUrl}
+                                            controls
+                                            className="max-w-full max-h-80 rounded-lg border border-slate-200 dark:border-slate-700 mx-auto"
+                                            title="Question video"
+                                        >
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="mb-4">
+                                    <img
+                                        src={resolvedMediaUrl}
+                                        alt="Question illustration"
+                                        className="max-w-full max-h-64 rounded-lg border border-slate-200 dark:border-slate-700 object-contain mx-auto cursor-pointer hover:opacity-90 transition-opacity"
+                                        onClick={() => window.open(resolvedMediaUrl, '_blank')}
+                                        title="Click to view full size"
+                                    />
+                                </div>
+                            );
+                        })()}
+
                         <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-relaxed">
                             <Latex>{question.prompt}</Latex>
                         </h2>

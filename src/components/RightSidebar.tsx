@@ -1,11 +1,26 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {createPortal} from 'react-dom';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery, getActiveQuestions} from '../utils/quizLogic';
-import {Upload, Trash2, AlertCircle, Download, Plus, ExternalLink, Pencil, Check, X} from 'lucide-react';
+import {storeMedia, createMediaRef, clearAllMedia} from '../utils/mediaStorage';
+import {Upload, Trash2, AlertCircle, Download, Plus, ExternalLink, Pencil, Check, X, ImageIcon} from 'lucide-react';
 import {ThemeToggle} from './ThemeToggle';
 import {clsx} from 'clsx';
 import type {Subject, Question, QuestionType, Topic} from '../types';
+
+// Helper to check if a media reference is a remote URL, data URI, or IndexedDB reference
+const isRemoteOrStoredMedia = (media: string): boolean => {
+    return media.startsWith('http://') ||
+        media.startsWith('https://') ||
+        media.startsWith('data:') ||
+        media.startsWith('idb:');
+};
+
+// Helper to extract filename from path (handles both / and \ separators)
+const getFilename = (path: string): string => {
+    const parts = path.split(/[/\\]/);
+    return parts[parts.length - 1];
+};
 
 export const RightSidebar: React.FC = () => {
     const {
@@ -32,6 +47,16 @@ export const RightSidebar: React.FC = () => {
     const [deleteProfileInput, setDeleteProfileInput] = useState('');
     const [factoryResetConfirm, setFactoryResetConfirm] = useState(false);
     const [factoryResetInput, setFactoryResetInput] = useState('');
+
+    // Image upload state
+    const [pendingImport, setPendingImport] = useState<{
+        data: unknown;
+        requiredImages: string[];
+        uploadedImages: Map<string, string>;
+        uploadError: string | null;
+        skippedFiles: string[];
+    } | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const currentProfile = profiles[activeProfileId];
     const {subjects, progress, session} = currentProfile;
@@ -82,7 +107,7 @@ export const RightSidebar: React.FC = () => {
                 throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "id"`);
             }
             if (typeof question.type !== 'string' || !validQuestionTypes.includes(question.type as QuestionType)) {
-                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "type" (must be one of: ${validQuestionTypes.join(', ')})`);
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "type"(must be one of: ${validQuestionTypes.join(', ')})`);
             }
             if (typeof question.prompt !== 'string' || !question.prompt) {
                 throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "prompt"`);
@@ -120,14 +145,14 @@ export const RightSidebar: React.FC = () => {
 
                 case 'true_false': {
                     if (typeof question.answer !== 'boolean') {
-                        throw new Error(`Invalid true_false question "${question.id}": Missing or invalid "answer" (must be boolean)`);
+                        throw new Error(`Invalid true_false question "${question.id}": Missing or invalid "answer"(must be boolean)`);
                     }
                     break;
                 }
 
                 case 'keywords': {
                     if (typeof question.answer !== 'string' && !Array.isArray(question.answer)) {
-                        throw new Error(`Invalid keywords question "${question.id}": Missing or invalid "answer" (must be string or array of strings)`);
+                        throw new Error(`Invalid keywords question "${question.id}": Missing or invalid "answer"(must be string or array of strings)`);
                     }
                     if (Array.isArray(question.answer) && question.answer.length === 0) {
                         throw new Error(`Invalid keywords question "${question.id}": "answer" array cannot be empty`);
@@ -162,7 +187,7 @@ export const RightSidebar: React.FC = () => {
                     }
                     const blankCount = (question.sentence as string).split('_').length - 1;
                     if (question.answers.length !== blankCount) {
-                        throw new Error(`Invalid word_bank question "${question.id}": "answers" array length (${question.answers.length}) doesn't match number of blanks in sentence (${blankCount})`);
+                        throw new Error(`Invalid word_bank question "${question.id}": "answers" array length(${question.answers.length}) doesn't match number of blanks in sentence (${blankCount})`);
                     }
                     break;
                 }
@@ -226,8 +251,81 @@ export const RightSidebar: React.FC = () => {
         return subjectsToValidate.map((s, idx) => validateSubject(s, idx));
     };
 
-    // Detect if data is a profile or subjects and import accordingly
-    const detectAndImport = (parsed: unknown): {type: 'profile' | 'subjects'; message: string} => {
+    // Extract all media references from subjects data
+    const extractMediaReferences = (data: unknown): string[] => {
+        const mediaRefs: string[] = [];
+
+        const processQuestion = (q: Record<string, unknown>) => {
+            if (typeof q.media === 'string' && q.media) {
+                mediaRefs.push(q.media);
+            }
+        };
+
+        const processSubjects = (subjects: unknown[]) => {
+            for (const subject of subjects) {
+                if (typeof subject === 'object' && subject !== null) {
+                    const s = subject as Record<string, unknown>;
+                    if (Array.isArray(s.topics)) {
+                        for (const topic of s.topics) {
+                            if (typeof topic === 'object' && topic !== null) {
+                                const t = topic as Record<string, unknown>;
+                                if (Array.isArray(t.questions)) {
+                                    for (const q of t.questions) {
+                                        if (typeof q === 'object' && q !== null) {
+                                            processQuestion(q as Record<string, unknown>);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        if (Array.isArray(data)) {
+            processSubjects(data);
+        } else if (typeof data === 'object' && data !== null) {
+            const obj = data as Record<string, unknown>;
+            if (Array.isArray(obj.subjects)) {
+                // It's a profile
+                processSubjects(obj.subjects);
+            } else if (obj.topics) {
+                // It's a single subject
+                processSubjects([obj]);
+            }
+        }
+
+        return mediaRefs;
+    };
+
+    // Get local media files that need to be uploaded (not URLs or data URIs)
+    const getLocalMedia = (media: string[]): string[] => {
+        return media.filter(m => !isRemoteOrStoredMedia(m));
+    };
+
+    // Replace local media paths with uploaded data URIs in the parsed data
+    const replaceMediaInData = (data: unknown, mediaMap: Map<string, string>): unknown => {
+        if (Array.isArray(data)) {
+            return data.map(item => replaceMediaInData(item, mediaMap));
+        }
+        if (typeof data === 'object' && data !== null) {
+            const result: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+                if (key === 'media' && typeof value === 'string') {
+                    const filename = getFilename(value);
+                    result[key] = mediaMap.get(filename) || value;
+                } else {
+                    result[key] = replaceMediaInData(value, mediaMap);
+                }
+            }
+            return result;
+        }
+        return data;
+    };
+
+    // Perform the actual import after images are handled
+    const performImport = (parsed: unknown): {type: 'profile' | 'subjects'; message: string} => {
         // Check if it's a profile (has profile-specific fields)
         if (
             typeof parsed === 'object' &&
@@ -267,10 +365,141 @@ export const RightSidebar: React.FC = () => {
         return {type: 'subjects', message};
     };
 
+    // Check for local media and either import directly or prompt for upload
+    const detectAndImport = (parsed: unknown): {type: 'profile' | 'subjects' | 'pending'; message: string} => {
+        const allMedia = extractMediaReferences(parsed);
+        const localMedia = getLocalMedia(allMedia);
+
+        if (localMedia.length > 0) {
+            // Need to upload local media first
+            const uniqueFilenames = [...new Set(localMedia.map(getFilename))];
+            setPendingImport({
+                data: parsed,
+                requiredImages: uniqueFilenames,
+                uploadedImages: new Map(),
+                uploadError: null,
+                skippedFiles: []
+            });
+            return {
+                type: 'pending',
+                message: `Found ${uniqueFilenames.length} local media file(s) that need to be uploaded.`
+            };
+        }
+
+        // No local media, import directly
+        return performImport(parsed);
+    };
+
+    // Handle image file selection for pending import
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!pendingImport || !e.target.files) return;
+
+        const files = Array.from(e.target.files);
+        const newUploadedImages = new Map(pendingImport.uploadedImages);
+
+        // Filter to only accept files that match required filenames
+        const validFiles = files.filter(file => pendingImport.requiredImages.includes(file.name));
+        const skipped = files.filter(file => !pendingImport.requiredImages.includes(file.name)).map(f => f.name);
+
+        if (validFiles.length === 0) {
+            // No valid files selected
+            setPendingImport({
+                ...pendingImport,
+                uploadError: skipped.length > 0
+                    ? `Skipped: ${skipped.join(', ')} (not in required list)`
+                    : 'No files selected',
+                skippedFiles: skipped
+            });
+            e.target.value = '';
+            return;
+        }
+
+        let processedCount = 0;
+        const totalToProcess = validFiles.length;
+
+        validFiles.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const dataUri = event.target?.result as string;
+                newUploadedImages.set(file.name, dataUri);
+                processedCount++;
+
+                if (processedCount === totalToProcess) {
+                    setPendingImport({
+                        ...pendingImport,
+                        uploadedImages: newUploadedImages,
+                        uploadError: skipped.length > 0
+                            ? `Skipped ${skipped.length} file(s) not in required list`
+                            : null,
+                        skippedFiles: skipped
+                    });
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        e.target.value = '';
+    };
+
+    // Complete the import with uploaded images
+    const completePendingImport = async () => {
+        if (!pendingImport) return;
+
+        const {data, requiredImages, uploadedImages} = pendingImport;
+
+        // Check all required images are uploaded
+        const missingImages = requiredImages.filter(img => !uploadedImages.has(img));
+        if (missingImages.length > 0) {
+            setPendingImport({
+                ...pendingImport,
+                uploadError: `Missing files: ${missingImages.join(', ')}`
+            });
+            return;
+        }
+
+        try {
+            // Store each media file in IndexedDB and create a mapping from filename to idb: reference
+            const mediaRefMap = new Map<string, string>();
+
+            for (const [filename, dataUri] of uploadedImages.entries()) {
+                const mediaId = await storeMedia(dataUri, filename);
+                mediaRefMap.set(filename, createMediaRef(mediaId));
+            }
+
+            // Replace media paths with IndexedDB references
+            const processedData = replaceMediaInData(data, mediaRefMap);
+
+            const result = performImport(processedData);
+            setPendingImport(null);
+            setJsonInput('');
+            setImportError(null);
+            alert(result.message);
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+            setPendingImport({
+                ...pendingImport,
+                uploadError: `Import failed: ${errorMessage}`
+            });
+        }
+    };
+
+    // Cancel pending import
+    const cancelPendingImport = () => {
+        setPendingImport(null);
+        setImportError(null);
+    };
+
     const handleImport = () => {
         try {
             const parsed: unknown = JSON.parse(jsonInput);
             const result = detectAndImport(parsed);
+
+            if (result.type === 'pending') {
+                // Don't clear input or show success - waiting for images
+                setImportError(null);
+                return;
+            }
+
             setJsonInput('');
             setImportError(null);
             alert(result.message);
@@ -290,6 +519,13 @@ export const RightSidebar: React.FC = () => {
                 const content = event.target?.result as string;
                 const parsed: unknown = JSON.parse(content);
                 const result = detectAndImport(parsed);
+
+                if (result.type === 'pending') {
+                    // Don't clear or show success - waiting for images
+                    setImportError(null);
+                    return;
+                }
+
                 setJsonInput('');
                 setImportError(null);
                 alert(result.message);
@@ -777,8 +1013,10 @@ export const RightSidebar: React.FC = () => {
                                 Cancel
                             </button>
                             <button
-                                onClick={() => {
+                                onClick={async () => {
                                     if (factoryResetInput === 'RESET') {
+                                        // Clear IndexedDB media storage
+                                        await clearAllMedia();
                                         resetAllData();
                                         setFactoryResetConfirm(false);
                                         setFactoryResetInput('');
@@ -790,6 +1028,96 @@ export const RightSidebar: React.FC = () => {
                                 Wipe All Data
                             </button>
                         </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Image Upload Modal for Pending Import */}
+            {pendingImport && createPortal(
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                                <ImageIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Upload Media</h3>
+                        </div>
+
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Your import contains local media references. Please upload the following files:
+                        </p>
+
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {pendingImport.requiredImages.map(filename => {
+                                const isUploaded = pendingImport.uploadedImages.has(filename);
+                                return (
+                                    <div
+                                        key={filename}
+                                        className={clsx(
+                                            "flex items-center justify-between p-2 rounded-lg text-sm",
+                                            isUploaded
+                                                ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
+                                                : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+                                        )}
+                                    >
+                                        <span className="truncate">{filename}</span>
+                                        {isUploaded ? (
+                                            <Check className="w-4 h-4 flex-shrink-0" />
+                                        ) : (
+                                            <X className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                            {pendingImport.uploadedImages.size} of {pendingImport.requiredImages.length} images uploaded
+                        </div>
+
+                        {/* Error/Warning display */}
+                        {pendingImport.uploadError && (
+                            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-amber-700 dark:text-amber-400 text-sm">
+                                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                <span>{pendingImport.uploadError}</span>
+                            </div>
+                        )}
+
+                        <input
+                            ref={imageInputRef}
+                            type="file"
+                            accept="image/*,video/*"
+                            multiple
+                            onChange={handleImageUpload}
+                            className="hidden"
+                        />
+
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={cancelPendingImport}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => imageInputRef.current?.click()}
+                                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Upload className="w-4 h-4" />
+                                Select Files
+                            </button>
+                        </div>
+
+                        {pendingImport.uploadedImages.size === pendingImport.requiredImages.length && (
+                            <button
+                                onClick={completePendingImport}
+                                className="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Check className="w-4 h-4" />
+                                Complete Import
+                            </button>
+                        )}
                     </div>
                 </div>,
                 document.body

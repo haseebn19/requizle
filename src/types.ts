@@ -12,6 +12,7 @@ export interface BaseQuestion {
     prompt: string;
     topicId: string;
     explanation?: string;
+    media?: string; // URL, data URI, or filename for images/videos
 }
 
 export interface MultipleChoiceQuestion extends BaseQuestion {

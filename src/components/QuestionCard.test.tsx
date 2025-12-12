@@ -1,11 +1,24 @@
 import {describe, it, expect, vi, beforeEach} from 'vitest';
-import {render, screen, fireEvent} from '@testing-library/react';
+import {render, screen, fireEvent, waitFor} from '@testing-library/react';
 import {QuestionCard} from './QuestionCard';
 import {useQuizStore} from '../store/useQuizStore';
 
 // Mock the store
 vi.mock('../store/useQuizStore', () => ({
     useQuizStore: vi.fn()
+}));
+
+// Mock mediaStorage
+const mockGetMedia = vi.fn();
+vi.mock('../utils/mediaStorage', () => ({
+    getMedia: (...args: unknown[]) => mockGetMedia(...args),
+    isIndexedDBMedia: (ref: string) => ref.startsWith('idb:'),
+    extractMediaId: (ref: string) => ref.replace('idb:', '')
+}));
+
+// Mock Latex component
+vi.mock('./Latex', () => ({
+    Latex: ({children}: {children: string}) => <span>{children}</span>
 }));
 
 // Mock sub-components to simplify testing
@@ -319,6 +332,159 @@ describe('QuestionCard', () => {
             fireEvent.click(screen.getByText(/Continue/));
 
             expect(mockNextQuestion).toHaveBeenCalled();
+        });
+    });
+
+    describe('media rendering', () => {
+        it('should render image when media is an image URL', async () => {
+            const question = {
+                id: '1',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: '',
+                media: 'https://example.com/image.png'
+            };
+
+            render(<QuestionCard question={question} />);
+
+            await waitFor(() => {
+                const img = document.querySelector('img');
+                expect(img).toBeInTheDocument();
+                expect(img).toHaveAttribute('src', 'https://example.com/image.png');
+            });
+        });
+
+        it('should render video when media is a video URL', async () => {
+            const question = {
+                id: '2',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: '',
+                media: 'https://example.com/video.mp4'
+            };
+
+            render(<QuestionCard question={question} />);
+
+            await waitFor(() => {
+                const video = document.querySelector('video');
+                expect(video).toBeInTheDocument();
+                expect(video).toHaveAttribute('src', 'https://example.com/video.mp4');
+            });
+        });
+
+        it('should render image when media is a data URI image', async () => {
+            const question = {
+                id: '3',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: '',
+                media: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=='
+            };
+
+            render(<QuestionCard question={question} />);
+
+            await waitFor(() => {
+                const img = document.querySelector('img');
+                expect(img).toBeInTheDocument();
+            });
+        });
+
+        it('should render video when media is a data URI video', async () => {
+            const question = {
+                id: '4',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: '',
+                media: 'data:video/mp4;base64,AAAAHGZ0eXBpc29t'
+            };
+
+            render(<QuestionCard question={question} />);
+
+            await waitFor(() => {
+                const video = document.querySelector('video');
+                expect(video).toBeInTheDocument();
+            });
+        });
+
+        it('should load media from IndexedDB when using idb: reference', async () => {
+            mockGetMedia.mockResolvedValue({
+                id: 'media-123',
+                data: 'data:image/png;base64,test',
+                filename: 'test.png',
+                mimeType: 'image/png',
+                size: 100,
+                createdAt: Date.now()
+            });
+
+            const question = {
+                id: '5',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: '',
+                media: 'idb:media-123'
+            };
+
+            render(<QuestionCard question={question} />);
+
+            await waitFor(() => {
+                expect(mockGetMedia).toHaveBeenCalledWith('media-123');
+                const img = document.querySelector('img');
+                expect(img).toBeInTheDocument();
+            });
+        });
+
+        it('should show error message when IndexedDB media fails to load', async () => {
+            mockGetMedia.mockResolvedValue(null);
+
+            const question = {
+                id: '6',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: '',
+                media: 'idb:non-existent'
+            };
+
+            render(<QuestionCard question={question} />);
+
+            await waitFor(() => {
+                expect(screen.getByText('Failed to load media')).toBeInTheDocument();
+            }, {timeout: 3000});
+        });
+
+        it('should not render media section when no media is present', () => {
+            const question = {
+                id: '7',
+                topicId: 't1',
+                type: 'multiple_choice' as const,
+                prompt: 'Q1',
+                choices: ['A', 'B'],
+                answerIndex: 0,
+                explanation: ''
+                // No media field
+            };
+
+            render(<QuestionCard question={question} />);
+
+            expect(document.querySelector('img')).not.toBeInTheDocument();
+            expect(document.querySelector('video')).not.toBeInTheDocument();
         });
     });
 });
