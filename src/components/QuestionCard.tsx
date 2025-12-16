@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect} from 'react';
 import type {Question} from '../types';
 import {useQuizStore} from '../store/useQuizStore';
 import {getMedia, isIndexedDBMedia, extractMediaId} from '../utils/mediaStorage';
@@ -23,78 +23,60 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
     const {submitAnswer, skipQuestion} = useQuizStore();
     const [submittedAnswer, setSubmittedAnswer] = useState<AnswerType | null>(null);
     const [result, setResult] = useState<{correct: boolean; explanation?: string} | null>(null);
-    const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | null>(null);
-    const [mediaLoading, setMediaLoading] = useState(false);
-    const [mediaError, setMediaError] = useState(false);
-    const prevQuestionIdRef = useRef<string>(question.id);
 
-    // Reset state when question changes
-    useEffect(() => {
-        if (prevQuestionIdRef.current !== question.id) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setSubmittedAnswer(null);
-            setResult(null);
-            setResolvedMediaUrl(null);
-            setMediaLoading(false);
-            setMediaError(false);
-            prevQuestionIdRef.current = question.id;
-        }
-    }, [question.id]);
+    // Initialize media state based on the type of media reference
+    // - No media: no loading needed
+    // - IndexedDB reference (idb:...): needs async loading
+    // - Direct URL or data URI: immediately resolved
+    const needsAsyncLoad = question.media && isIndexedDBMedia(question.media);
+    const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | null>(
+        question.media && !needsAsyncLoad ? question.media : null
+    );
+    const [mediaLoading, setMediaLoading] = useState(needsAsyncLoad ?? false);
+    const [mediaError, setMediaError] = useState(false);
 
     // Load media from IndexedDB if needed (with retry logic)
+    // Note: Parent uses key prop to force remount on question change,
+    // so state resets automatically when question changes
     useEffect(() => {
-        if (!question.media) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setResolvedMediaUrl(null);
-            setMediaLoading(false);
-            setMediaError(false);
+        // Only need to load if it's an IndexedDB reference
+        if (!question.media || !isIndexedDBMedia(question.media)) {
             return;
         }
 
-        if (isIndexedDBMedia(question.media)) {
-            // Load from IndexedDB with retry
-            setMediaLoading(true);
-            setMediaError(false);
-            const mediaId = extractMediaId(question.media);
+        const mediaId = extractMediaId(question.media);
+        const maxRetries = 3;
+        const retryDelay = 500; // ms
 
-            const maxRetries = 3;
-            const retryDelay = 500; // ms
+        const attemptLoad = (retryCount: number) => {
+            getMedia(mediaId).then(entry => {
+                if (entry) {
+                    setResolvedMediaUrl(entry.data);
+                    setMediaLoading(false);
+                } else if (retryCount < maxRetries) {
+                    // Retry after delay
+                    setTimeout(() => attemptLoad(retryCount + 1), retryDelay);
+                } else {
+                    // Give up after max retries
+                    setResolvedMediaUrl(null);
+                    setMediaError(true);
+                    setMediaLoading(false);
+                }
+            }).catch(() => {
+                if (retryCount < maxRetries) {
+                    // Retry after delay
+                    setTimeout(() => attemptLoad(retryCount + 1), retryDelay);
+                } else {
+                    // Give up after max retries
+                    setResolvedMediaUrl(null);
+                    setMediaError(true);
+                    setMediaLoading(false);
+                }
+            });
+        };
 
-            const attemptLoad = (retryCount: number) => {
-                getMedia(mediaId).then(entry => {
-                    if (entry) {
-                        setResolvedMediaUrl(entry.data);
-                        setMediaLoading(false);
-                    } else if (retryCount < maxRetries) {
-                        // Retry after delay
-                        setTimeout(() => attemptLoad(retryCount + 1), retryDelay);
-                    } else {
-                        // Give up after max retries
-                        setResolvedMediaUrl(null);
-                        setMediaError(true);
-                        setMediaLoading(false);
-                    }
-                }).catch(() => {
-                    if (retryCount < maxRetries) {
-                        // Retry after delay
-                        setTimeout(() => attemptLoad(retryCount + 1), retryDelay);
-                    } else {
-                        // Give up after max retries
-                        setResolvedMediaUrl(null);
-                        setMediaError(true);
-                        setMediaLoading(false);
-                    }
-                });
-            };
-
-            attemptLoad(0);
-        } else {
-            // Direct URL or data URI
-            setResolvedMediaUrl(question.media);
-            setMediaLoading(false);
-            setMediaError(false);
-        }
-    }, [question.media, question.id]);
+        attemptLoad(0);
+    }, [question.media]);
 
     const handleAnswer = (answer: AnswerType) => {
         setSubmittedAnswer(answer);

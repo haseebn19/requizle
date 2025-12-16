@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import type {MultipleAnswerQuestion} from '../../types';
 import {clsx} from 'clsx';
 import {motion} from 'framer-motion';
@@ -13,14 +13,9 @@ interface Props {
 }
 
 export const MultipleAnswerInput: React.FC<Props> = ({question, onAnswer, disabled, submittedAnswer}) => {
-    const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
-
-    useEffect(() => {
-        if (submittedAnswer) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setSelectedIndices(submittedAnswer);
-        }
-    }, [submittedAnswer]);
+    // Initialize from submittedAnswer if already submitted (e.g., re-render)
+    // submittedAnswer only transitions null -> value once per question lifecycle
+    const [selectedIndices, setSelectedIndices] = useState<number[]>(submittedAnswer ?? []);
 
     const toggleSelection = (index: number) => {
         if (disabled) return;

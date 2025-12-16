@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import type {WordBankQuestion} from '../../types';
 import {clsx} from 'clsx';
 import {motion} from 'framer-motion';
@@ -11,26 +11,25 @@ interface Props {
     submittedAnswer: string[] | null;
 }
 
-export const WordBankInput: React.FC<Props> = ({question, onAnswer, disabled, submittedAnswer}) => {
-    const [filledSlots, setFilledSlots] = useState<(string | null)[]>(
-        new Array(question.sentence.split('_').length - 1).fill(null)
-    );
-    const [availableWords, setAvailableWords] = useState<string[]>(question.wordBank);
+// Helper to compute available words after slots are filled
+const computeAvailableWords = (wordBank: string[], filledSlots: (string | null)[]): string[] => {
+    const used = filledSlots.filter(Boolean) as string[];
+    const remaining = [...wordBank];
+    used.forEach(word => {
+        const idx = remaining.indexOf(word);
+        if (idx > -1) remaining.splice(idx, 1);
+    });
+    return remaining;
+};
 
-    useEffect(() => {
-        if (submittedAnswer) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setFilledSlots(submittedAnswer);
-            // Re-calculate available words
-            const used = submittedAnswer.filter(Boolean) as string[];
-            const remaining = [...question.wordBank];
-            used.forEach(word => {
-                const idx = remaining.indexOf(word);
-                if (idx > -1) remaining.splice(idx, 1);
-            });
-            setAvailableWords(remaining);
-        }
-    }, [submittedAnswer, question.wordBank]);
+export const WordBankInput: React.FC<Props> = ({question, onAnswer, disabled, submittedAnswer}) => {
+    // Initialize from submittedAnswer if already submitted (e.g., re-render)
+    // submittedAnswer only transitions null -> value once per question lifecycle
+    const initialSlots = submittedAnswer ?? new Array(question.sentence.split('_').length - 1).fill(null);
+    const [filledSlots, setFilledSlots] = useState<(string | null)[]>(initialSlots);
+    const [availableWords, setAvailableWords] = useState<string[]>(
+        () => computeAvailableWords(question.wordBank, initialSlots)
+    );
 
     const handleWordClick = (word: string) => {
         if (disabled) return;

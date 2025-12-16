@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import type {MatchingQuestion} from '../../types';
 import {clsx} from 'clsx';
 import {motion} from 'framer-motion';
@@ -22,30 +22,17 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 };
 
 export const MatchingInput: React.FC<Props> = ({question, onAnswer, disabled, submittedAnswer}) => {
-    const [matches, setMatches] = useState<Record<string, string>>({});
+    // Initialize from submittedAnswer if already submitted (e.g., re-render)
+    // submittedAnswer only transitions null -> value once per question lifecycle
+    const [matches, setMatches] = useState<Record<string, string>>(submittedAnswer ?? {});
     const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
 
-    // Shuffle the right side items for display
-    const [shuffledRightItems, setShuffledRightItems] = useState<string[]>(() => {
+    // Shuffle the right side items for display (computed once on mount)
+    // Parent uses key prop to force remount on question change, so this resets automatically
+    const [shuffledRightItems] = useState<string[]>(() => {
         const rightItems = question.pairs.map(pair => pair.right);
         return shuffleArray(rightItems);
     });
-
-    useEffect(() => {
-        if (submittedAnswer) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setMatches(submittedAnswer);
-        }
-    }, [submittedAnswer]);
-
-    // Reset shuffle when question changes
-    useEffect(() => {
-        const rightItems = question.pairs.map(pair => pair.right);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setShuffledRightItems(shuffleArray(rightItems));
-        setMatches({});
-        setSelectedLeft(null);
-    }, [question.id, question.pairs]);
 
     const handleLeftClick = (leftId: string) => {
         if (disabled) return;

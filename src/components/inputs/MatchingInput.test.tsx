@@ -194,7 +194,9 @@ describe('MatchingInput', () => {
         );
 
         // Component should render with matches shown
+        // Left items should be visible
         expect(screen.getByText('A')).toBeInTheDocument();
-        expect(screen.getByText('1')).toBeInTheDocument();
+        // Right items appear twice: once as the item, once as the match indicator badge
+        expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(1);
     });
 });
