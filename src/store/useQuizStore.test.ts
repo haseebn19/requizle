@@ -76,6 +76,7 @@ const resetStore = () => {
                         includeMastered: false,
                         queue: [],
                         currentQuestionId: null,
+                        turnCounter: 0,
                     },
                     createdAt: Date.now()
                 }
@@ -730,7 +731,8 @@ describe('useQuizStore', () => {
                         mode: 'random',
                         includeMastered: false,
                         queue: [],
-                        currentQuestionId: null
+                        currentQuestionId: null,
+                        turnCounter: 0,
                     },
                     createdAt: Date.now()
                 };

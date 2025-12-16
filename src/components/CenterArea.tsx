@@ -83,7 +83,10 @@ export const CenterArea: React.FC = () => {
                         </span>
                     )}
                     <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                        Queue: {session.queue.length + 1}
+                        {/* Don't double-count if current question was re-added to queue after wrong answer */}
+                        Queue: {session.queue.includes(session.currentQuestionId!)
+                            ? session.queue.length
+                            : session.queue.length + 1}
                     </span>
                 </div>
 
@@ -108,11 +111,10 @@ export const CenterArea: React.FC = () => {
             {/* Question Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-8">
                 <div className="min-h-full flex items-center justify-center">
-                    <QuestionCard question={currentQuestion} />
+                    {/* Key uses turnCounter from store to force remount when advancing to same question */}
+                    <QuestionCard key={`${currentQuestion.id}-${session.turnCounter}`} question={currentQuestion} />
                 </div>
             </div>
         </div>
     );
 };
-
-

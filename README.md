@@ -74,55 +74,45 @@ You can import your own subjects and questions using JSON. Upload a file or past
 
 ### JSON Format
 
+The format is designed to be simple and intuitive. IDs are auto-generated if not provided.
+
 ```json
 [
   {
-    "id": "example-subject",
     "name": "Example Subject",
     "topics": [
       {
-        "id": "topic-1",
         "name": "All Question Types",
         "questions": [
           {
-            "id": "q1",
             "type": "multiple_choice",
-            "topicId": "topic-1",
-            "prompt": "What is the capital of France?",
+            "question": "What is the capital of France?",
             "choices": ["London", "Paris", "Berlin", "Madrid"],
             "answerIndex": 1,
             "explanation": "Paris is the capital of France."
           },
           {
-            "id": "q2",
             "type": "multiple_answer",
-            "topicId": "topic-1",
-            "prompt": "Select all prime numbers:",
+            "question": "Select all prime numbers:",
             "choices": ["2", "4", "5", "9"],
             "answerIndices": [0, 2],
             "explanation": "2 and 5 are prime. 4 and 9 are composite."
           },
           {
-            "id": "q3",
             "type": "true_false",
-            "topicId": "topic-1",
-            "prompt": "The Earth is flat.",
+            "question": "The Earth is flat.",
             "answer": false,
             "explanation": "The Earth is roughly spherical."
           },
           {
-            "id": "q4",
             "type": "keywords",
-            "topicId": "topic-1",
-            "prompt": "What gas do plants absorb from the air?",
+            "question": "What gas do plants absorb from the air?",
             "answer": ["carbon dioxide", "co2"],
             "explanation": "Plants absorb CO2 for photosynthesis."
           },
           {
-            "id": "q5",
             "type": "matching",
-            "topicId": "topic-1",
-            "prompt": "Match the countries to their capitals:",
+            "question": "Match the countries to their capitals:",
             "pairs": [
               { "left": "Japan", "right": "Tokyo" },
               { "left": "Italy", "right": "Rome" },
@@ -130,10 +120,8 @@ You can import your own subjects and questions using JSON. Upload a file or past
             ]
           },
           {
-            "id": "q6",
             "type": "word_bank",
-            "topicId": "topic-1",
-            "prompt": "Complete the sentence:",
+            "question": "Complete the sentence:",
             "sentence": "The _ is the powerhouse of the _.",
             "wordBank": ["mitochondria", "cell", "nucleus", "atom"],
             "answers": ["mitochondria", "cell"]
@@ -145,7 +133,32 @@ You can import your own subjects and questions using JSON. Upload a file or past
 ]
 ```
 
-### Question Types
+### Structure Reference
+
+#### Subject (top level)
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | ✓ | Display name |
+| `topics` | ✓ | Array of topics |
+| `id` | | Auto-generated if not provided. Provide to enable merging. |
+
+#### Topic (inside subject)
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | ✓ | Display name |
+| `questions` | ✓ | Array of questions |
+| `id` | | Auto-generated if not provided. Provide to enable merging. |
+
+#### Question (inside topic)
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | ✓ | One of: `multiple_choice`, `multiple_answer`, `true_false`, `keywords`, `matching`, `word_bank` |
+| `question` | ✓ | The question text (or use `prompt`) |
+| `id` | | Auto-generated if not provided. Provide to enable merging. |
+| `explanation` | | Shown after answering |
+| `media` | | Image/video URL or filename (see Media Support) |
+
+**Type-specific fields:**
 
 | Type | Required Fields |
 |------|----------------|
@@ -156,11 +169,25 @@ You can import your own subjects and questions using JSON. Upload a file or past
 | `matching` | `pairs` (array of `{left, right}`) |
 | `word_bank` | `sentence` (with `_` for blanks), `wordBank` (array), `answers` (array) |
 
-All questions require: `id`, `type`, `topicId`, `prompt`
+### Merging Behavior
 
-Optional fields:
-- `explanation` - Shown after answering
-- `media` - Image or video to display with the question (see Media Support below)
+By default, each import creates new content with unique auto-generated IDs. This prevents accidental data loss or mixing of unrelated content.
+
+**To update/merge existing content**, provide explicit matching `id` values:
+
+```json
+// First import - creates new subject with ID "bio-101"
+{"id": "bio-101", "name": "Biology", "topics": [...]}
+
+// Later import - updates the same subject because ID matches
+{"id": "bio-101", "name": "Biology", "topics": [...]}
+```
+
+**Without explicit IDs**, importing the same file twice creates separate copies:
+```json
+{"name": "Biology", ...}  // Creates "Biology" with ID "subject-1234-0"
+{"name": "Biology", ...}  // Creates another "Biology" with ID "subject-1234-1"
+```
 
 ### Media Support
 

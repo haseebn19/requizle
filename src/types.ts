@@ -94,6 +94,7 @@ export interface SessionState {
     includeMastered: boolean;
     queue: string[]; // question IDs
     currentQuestionId: string | null;
+    turnCounter: number; // Increments each time we advance to a new question
 }
 
 export interface Profile {

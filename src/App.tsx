@@ -245,7 +245,19 @@ function App() {
   useEffect(() => {
     // Load sample data if no subjects exist (first run)
     if (subjects.length === 0) {
-      setSubjects(SAMPLE_SUBJECTS);
+      // Convert relative media paths to absolute URLs for portability
+      const baseUrl = window.location.origin + import.meta.env.BASE_URL;
+      const subjectsWithAbsoluteMedia = SAMPLE_SUBJECTS.map(subject => ({
+        ...subject,
+        topics: subject.topics.map(topic => ({
+          ...topic,
+          questions: topic.questions.map(question => ({
+            ...question,
+            media: question.media ? baseUrl + question.media : undefined
+          }))
+        }))
+      }));
+      setSubjects(subjectsWithAbsoluteMedia);
     }
   }, [subjects.length, setSubjects]);
 

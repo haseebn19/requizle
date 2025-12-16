@@ -8,7 +8,7 @@ interface LatexProps {
 }
 
 /**
- * Renders text with LaTeX support using Anki-style delimiters.
+ * Renders text with LaTeX support
  * - Inline math: \(...\)
  * - Block math: \[...\]
  */
@@ -53,7 +53,7 @@ export const Latex: React.FC<LatexProps> = ({children, className}) => {
 
 function parseInlineMath(text: string, startKey: number): React.ReactNode[] {
     const parts: React.ReactNode[] = [];
-    // Match \(...\) - inline math with Anki-style delimiters
+    // Match \(...\) - inline math
     const inlineRegex = /\\\(([\s\S]*?)\\\)/g;
     let lastIndex = 0;
     let match;

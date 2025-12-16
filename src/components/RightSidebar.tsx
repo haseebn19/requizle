@@ -48,13 +48,28 @@ export const RightSidebar: React.FC = () => {
     const [factoryResetConfirm, setFactoryResetConfirm] = useState(false);
     const [factoryResetInput, setFactoryResetInput] = useState('');
 
+    // Media reference with context about where it's used
+    type MediaReference = {
+        path: string;           // Full path from JSON (e.g., "images/image.png")
+        filename: string;       // Just the filename
+        subjectName: string;
+        topicName: string;
+    };
+
+    // Grouped media by filename for display
+    type MediaGroup = {
+        filename: string;
+        references: MediaReference[];
+        isConflict: boolean;    // Same filename, different paths
+        uploaded: boolean;
+        uploadedDataUri?: string;
+    };
+
     // Image upload state
     const [pendingImport, setPendingImport] = useState<{
         data: unknown;
-        requiredImages: string[];
-        uploadedImages: Map<string, string>;
+        mediaGroups: MediaGroup[];
         uploadError: string | null;
-        skippedFiles: string[];
     } | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,26 +110,35 @@ export const RightSidebar: React.FC = () => {
             'word_bank'
         ];
 
-        const validateQuestion = (q: unknown, questionIndex: number, topicName: string): Question => {
+        // Auto-generate unique IDs (random, no auto-merge - users must provide matching IDs for merging)
+        let idCounter = 0;
+        const generateId = (prefix: string) => `${prefix}-${Date.now()}-${idCounter++}`;
+
+        const validateQuestion = (q: unknown, questionIndex: number, topicName: string, topicId: string): Question => {
             if (typeof q !== 'object' || q === null) {
                 throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Must be an object`);
             }
 
             const question = q as Record<string, unknown>;
 
+            // Auto-generate id if not provided
+            const id = typeof question.id === 'string' && question.id ? question.id : generateId('q');
+
+            // Accept both "question" and "prompt" for the question text
+            const prompt = question.prompt || question.question;
+
             // Validate base fields
-            if (typeof question.id !== 'string' || !question.id) {
-                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "id"`);
-            }
             if (typeof question.type !== 'string' || !validQuestionTypes.includes(question.type as QuestionType)) {
-                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "type"(must be one of: ${validQuestionTypes.join(', ')})`);
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "type" (must be one of: ${validQuestionTypes.join(', ')})`);
             }
-            if (typeof question.prompt !== 'string' || !question.prompt) {
-                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "prompt"`);
+            if (typeof prompt !== 'string' || !prompt) {
+                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "question" or "prompt"`);
             }
-            if (typeof question.topicId !== 'string' || !question.topicId) {
-                throw new Error(`Invalid question ${questionIndex + 1} in topic "${topicName}": Missing or invalid "topicId"`);
-            }
+
+            // Set the normalized values
+            question.id = id;
+            question.prompt = prompt;
+            question.topicId = topicId; // Auto-infer from parent topic
 
             const type = question.type as QuestionType;
 
@@ -203,20 +227,21 @@ export const RightSidebar: React.FC = () => {
 
             const topic = t as Record<string, unknown>;
 
-            if (typeof topic.id !== 'string' || !topic.id) {
-                throw new Error(`Invalid topic ${topicIndex + 1} in subject "${subjectName}": Missing or invalid "id"`);
-            }
             if (typeof topic.name !== 'string' || !topic.name) {
                 throw new Error(`Invalid topic ${topicIndex + 1} in subject "${subjectName}": Missing or invalid "name"`);
             }
+
+            // Use provided ID, or generate unique random ID
+            const id = typeof topic.id === 'string' && topic.id ? topic.id : generateId('topic');
+
             if (!Array.isArray(topic.questions)) {
                 throw new Error(`Invalid topic "${topic.name}": Missing or invalid "questions" array`);
             }
 
-            const questions = topic.questions.map((q, idx) => validateQuestion(q, idx, topic.name as string));
+            const questions = topic.questions.map((q, idx) => validateQuestion(q, idx, topic.name as string, id));
 
             return {
-                id: topic.id as string,
+                id,
                 name: topic.name as string,
                 questions
             };
@@ -229,12 +254,13 @@ export const RightSidebar: React.FC = () => {
 
             const subject = s as Record<string, unknown>;
 
-            if (typeof subject.id !== 'string' || !subject.id) {
-                throw new Error(`Invalid subject ${subjectIndex + 1}: Missing or invalid "id"`);
-            }
             if (typeof subject.name !== 'string' || !subject.name) {
                 throw new Error(`Invalid subject ${subjectIndex + 1}: Missing or invalid "name"`);
             }
+
+            // Use provided ID, or generate unique random ID
+            const id = typeof subject.id === 'string' && subject.id ? subject.id : generateId('subject');
+
             if (!Array.isArray(subject.topics)) {
                 throw new Error(`Invalid subject "${subject.name}": Missing or invalid "topics" array`);
             }
@@ -242,7 +268,7 @@ export const RightSidebar: React.FC = () => {
             const topics = subject.topics.map((t, idx) => validateTopic(t, idx, subject.name as string));
 
             return {
-                id: subject.id as string,
+                id,
                 name: subject.name as string,
                 topics
             };
@@ -251,13 +277,18 @@ export const RightSidebar: React.FC = () => {
         return subjectsToValidate.map((s, idx) => validateSubject(s, idx));
     };
 
-    // Extract all media references from subjects data
-    const extractMediaReferences = (data: unknown): string[] => {
-        const mediaRefs: string[] = [];
+    // Extract all media references with context (subject/topic names)
+    const extractMediaReferencesWithContext = (data: unknown): MediaReference[] => {
+        const mediaRefs: MediaReference[] = [];
 
-        const processQuestion = (q: Record<string, unknown>) => {
+        const processQuestion = (q: Record<string, unknown>, subjectName: string, topicName: string) => {
             if (typeof q.media === 'string' && q.media) {
-                mediaRefs.push(q.media);
+                mediaRefs.push({
+                    path: q.media,
+                    filename: getFilename(q.media),
+                    subjectName,
+                    topicName
+                });
             }
         };
 
@@ -265,14 +296,16 @@ export const RightSidebar: React.FC = () => {
             for (const subject of subjects) {
                 if (typeof subject === 'object' && subject !== null) {
                     const s = subject as Record<string, unknown>;
+                    const subjectName = typeof s.name === 'string' ? s.name : 'Unknown Subject';
                     if (Array.isArray(s.topics)) {
                         for (const topic of s.topics) {
                             if (typeof topic === 'object' && topic !== null) {
                                 const t = topic as Record<string, unknown>;
+                                const topicName = typeof t.name === 'string' ? t.name : 'Unknown Topic';
                                 if (Array.isArray(t.questions)) {
                                     for (const q of t.questions) {
                                         if (typeof q === 'object' && q !== null) {
-                                            processQuestion(q as Record<string, unknown>);
+                                            processQuestion(q as Record<string, unknown>, subjectName, topicName);
                                         }
                                     }
                                 }
@@ -299,30 +332,36 @@ export const RightSidebar: React.FC = () => {
         return mediaRefs;
     };
 
-    // Get local media files that need to be uploaded (not URLs or data URIs)
-    const getLocalMedia = (media: string[]): string[] => {
-        return media.filter(m => !isRemoteOrStoredMedia(m));
+    // Get local media references (filter out remote URLs and stored media)
+    const getLocalMediaRefs = (refs: MediaReference[]): MediaReference[] => {
+        return refs.filter(r => !isRemoteOrStoredMedia(r.path));
     };
 
-    // Replace local media paths with uploaded data URIs in the parsed data
-    const replaceMediaInData = (data: unknown, mediaMap: Map<string, string>): unknown => {
-        if (Array.isArray(data)) {
-            return data.map(item => replaceMediaInData(item, mediaMap));
+    // Group media by filename and detect conflicts
+    const groupMediaByFilename = (refs: MediaReference[]): MediaGroup[] => {
+        const groups = new Map<string, MediaReference[]>();
+
+        for (const ref of refs) {
+            const existing = groups.get(ref.filename) || [];
+            existing.push(ref);
+            groups.set(ref.filename, existing);
         }
-        if (typeof data === 'object' && data !== null) {
-            const result: Record<string, unknown> = {};
-            for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-                if (key === 'media' && typeof value === 'string') {
-                    const filename = getFilename(value);
-                    result[key] = mediaMap.get(filename) || value;
-                } else {
-                    result[key] = replaceMediaInData(value, mediaMap);
-                }
-            }
-            return result;
-        }
-        return data;
+
+        return Array.from(groups.entries()).map(([filename, references]) => {
+            // Check if this is a conflict: same filename but different paths
+            const uniquePaths = new Set(references.map(r => r.path));
+            const isConflict = uniquePaths.size > 1;
+
+            return {
+                filename,
+                references,
+                isConflict,
+                uploaded: false,
+                uploadedDataUri: undefined
+            };
+        });
     };
+
 
     // Perform the actual import after images are handled
     const performImport = (parsed: unknown): {type: 'profile' | 'subjects'; message: string} => {
@@ -367,22 +406,21 @@ export const RightSidebar: React.FC = () => {
 
     // Check for local media and either import directly or prompt for upload
     const detectAndImport = (parsed: unknown): {type: 'profile' | 'subjects' | 'pending'; message: string} => {
-        const allMedia = extractMediaReferences(parsed);
-        const localMedia = getLocalMedia(allMedia);
+        const allRefs = extractMediaReferencesWithContext(parsed);
+        const localRefs = getLocalMediaRefs(allRefs);
 
-        if (localMedia.length > 0) {
-            // Need to upload local media first
-            const uniqueFilenames = [...new Set(localMedia.map(getFilename))];
+        if (localRefs.length > 0) {
+            // Group by filename and detect conflicts
+            const mediaGroups = groupMediaByFilename(localRefs);
             setPendingImport({
                 data: parsed,
-                requiredImages: uniqueFilenames,
-                uploadedImages: new Map(),
-                uploadError: null,
-                skippedFiles: []
+                mediaGroups,
+                uploadError: null
             });
+            const conflictCount = mediaGroups.filter(g => g.isConflict).length;
             return {
                 type: 'pending',
-                message: `Found ${uniqueFilenames.length} local media file(s) that need to be uploaded.`
+                message: `Found ${mediaGroups.length} media file(s). ${conflictCount > 0 ? `${conflictCount} have naming conflicts.` : ''}`
             };
         }
 
@@ -390,30 +428,33 @@ export const RightSidebar: React.FC = () => {
         return performImport(parsed);
     };
 
-    // Handle image file selection for pending import
+    // Handle bulk image file selection for non-conflict media
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!pendingImport || !e.target.files) return;
 
         const files = Array.from(e.target.files);
-        const newUploadedImages = new Map(pendingImport.uploadedImages);
 
-        // Filter to only accept files that match required filenames
-        const validFiles = files.filter(file => pendingImport.requiredImages.includes(file.name));
-        const skipped = files.filter(file => !pendingImport.requiredImages.includes(file.name)).map(f => f.name);
+        // Only process non-conflict groups with bulk upload
+        const nonConflictFilenames = pendingImport.mediaGroups
+            .filter(g => !g.isConflict && !g.uploaded)
+            .map(g => g.filename);
+
+        const validFiles = files.filter(file => nonConflictFilenames.includes(file.name));
+        const skipped = files.filter(file => !nonConflictFilenames.includes(file.name)).map(f => f.name);
 
         if (validFiles.length === 0) {
-            // No valid files selected
             setPendingImport({
                 ...pendingImport,
                 uploadError: skipped.length > 0
-                    ? `Skipped: ${skipped.join(', ')} (not in required list)`
-                    : 'No files selected',
-                skippedFiles: skipped
+                    ? `Skipped: ${skipped.join(', ')} (not in required list or is a conflict)`
+                    : 'No matching files selected'
             });
             e.target.value = '';
             return;
         }
 
+        // Track processing with a map of filename -> dataUri
+        const uploadResults = new Map<string, string>();
         let processedCount = 0;
         const totalToProcess = validFiles.length;
 
@@ -421,17 +462,34 @@ export const RightSidebar: React.FC = () => {
             const reader = new FileReader();
             reader.onload = (event) => {
                 const dataUri = event.target?.result as string;
-                newUploadedImages.set(file.name, dataUri);
+                uploadResults.set(file.name, dataUri);
                 processedCount++;
 
                 if (processedCount === totalToProcess) {
-                    setPendingImport({
-                        ...pendingImport,
-                        uploadedImages: newUploadedImages,
-                        uploadError: skipped.length > 0
-                            ? `Skipped ${skipped.length} file(s) not in required list`
-                            : null,
-                        skippedFiles: skipped
+                    // Use functional update with all results at once
+                    setPendingImport(prev => {
+                        if (!prev) return prev;
+
+                        const newMediaGroups = prev.mediaGroups.map(group => {
+                            if (group.isConflict) return group;
+                            const dataUri = uploadResults.get(group.filename);
+                            if (dataUri) {
+                                return {
+                                    ...group,
+                                    uploaded: true,
+                                    uploadedDataUri: dataUri
+                                };
+                            }
+                            return group;
+                        });
+
+                        return {
+                            ...prev,
+                            mediaGroups: newMediaGroups,
+                            uploadError: skipped.length > 0
+                                ? `Skipped ${skipped.length} file(s) not in required list`
+                                : null
+                        };
                     });
                 }
             };
@@ -441,33 +499,131 @@ export const RightSidebar: React.FC = () => {
         e.target.value = '';
     };
 
+    // Handle individual upload for a specific conflict reference
+    const handleConflictUpload = (groupIndex: number, refIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || !e.target.files[0]) return;
+
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const dataUri = event.target?.result as string;
+
+            // Use functional update to get latest state
+            setPendingImport(prev => {
+                if (!prev) return prev;
+
+                const newMediaGroups = prev.mediaGroups.map((group, idx) => {
+                    if (idx !== groupIndex) return group;
+
+                    // Get or create the per-ref upload map
+                    const existingRefMap = (group as unknown as {uploadedPerRef?: Map<string, string>}).uploadedPerRef;
+                    const refMap = new Map(existingRefMap || []);
+                    refMap.set(group.references[refIndex].path, dataUri);
+
+                    // Check if all refs in this conflict group are uploaded
+                    const allUploaded = group.references.every(ref => refMap.has(ref.path));
+
+                    return {
+                        ...group,
+                        uploaded: allUploaded,
+                        uploadedPerRef: refMap
+                    } as typeof group & {uploadedPerRef: Map<string, string>};
+                });
+
+                return {
+                    ...prev,
+                    mediaGroups: newMediaGroups,
+                    uploadError: null
+                };
+            });
+        };
+
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
+    // Handle individual upload for non-conflict groups (single file applies to all usages)
+    const handleSingleUpload = (groupIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || !e.target.files[0]) return;
+
+        const file = e.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = (event) => {
+            const dataUri = event.target?.result as string;
+
+            // Use functional update to get latest state
+            setPendingImport(prev => {
+                if (!prev) return prev;
+
+                const newMediaGroups = prev.mediaGroups.map((group, idx) => {
+                    if (idx !== groupIndex) return group;
+                    return {
+                        ...group,
+                        uploaded: true,
+                        uploadedDataUri: dataUri
+                    };
+                });
+
+                return {
+                    ...prev,
+                    mediaGroups: newMediaGroups,
+                    uploadError: null
+                };
+            });
+        };
+
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
     // Complete the import with uploaded images
     const completePendingImport = async () => {
         if (!pendingImport) return;
 
-        const {data, requiredImages, uploadedImages} = pendingImport;
+        const {data, mediaGroups} = pendingImport;
 
-        // Check all required images are uploaded
-        const missingImages = requiredImages.filter(img => !uploadedImages.has(img));
-        if (missingImages.length > 0) {
+        // Check all media is uploaded
+        const missingGroups = mediaGroups.filter(g => !g.uploaded);
+        if (missingGroups.length > 0) {
+            const missingNames = missingGroups.map(g => g.filename).join(', ');
             setPendingImport({
                 ...pendingImport,
-                uploadError: `Missing files: ${missingImages.join(', ')}`
+                uploadError: `Missing files: ${missingNames}`
             });
             return;
         }
 
         try {
-            // Store each media file in IndexedDB and create a mapping from filename to idb: reference
+            // Store each media file in IndexedDB and create a mapping from full path to idb: reference
             const mediaRefMap = new Map<string, string>();
 
-            for (const [filename, dataUri] of uploadedImages.entries()) {
-                const mediaId = await storeMedia(dataUri, filename);
-                mediaRefMap.set(filename, createMediaRef(mediaId));
+            for (const group of mediaGroups) {
+                if (group.isConflict) {
+                    // For conflicts, each reference has its own upload
+                    const refMap = (group as unknown as {uploadedPerRef: Map<string, string>}).uploadedPerRef;
+                    for (const ref of group.references) {
+                        const dataUri = refMap.get(ref.path);
+                        if (dataUri) {
+                            const mediaId = await storeMedia(dataUri, ref.filename);
+                            mediaRefMap.set(ref.path, createMediaRef(mediaId));
+                        }
+                    }
+                } else {
+                    // For non-conflicts, all references use the same upload
+                    if (group.uploadedDataUri) {
+                        const mediaId = await storeMedia(group.uploadedDataUri, group.filename);
+                        const idbRef = createMediaRef(mediaId);
+                        for (const ref of group.references) {
+                            mediaRefMap.set(ref.path, idbRef);
+                        }
+                    }
+                }
             }
 
-            // Replace media paths with IndexedDB references
-            const processedData = replaceMediaInData(data, mediaRefMap);
+            // Replace media paths with IndexedDB references (using full path as key)
+            const processedData = replaceMediaByPath(data, mediaRefMap);
 
             const result = performImport(processedData);
             setPendingImport(null);
@@ -481,6 +637,26 @@ export const RightSidebar: React.FC = () => {
                 uploadError: `Import failed: ${errorMessage}`
             });
         }
+    };
+
+    // Replace media by full path (for conflict-aware replacement)
+    const replaceMediaByPath = (data: unknown, mediaMap: Map<string, string>): unknown => {
+        if (Array.isArray(data)) {
+            return data.map(item => replaceMediaByPath(item, mediaMap));
+        }
+        if (typeof data === 'object' && data !== null) {
+            const result: Record<string, unknown> = {};
+            for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+                if (key === 'media' && typeof value === 'string') {
+                    // Try full path first, then filename
+                    result[key] = mediaMap.get(value) || mediaMap.get(getFilename(value)) || value;
+                } else {
+                    result[key] = replaceMediaByPath(value, mediaMap);
+                }
+            }
+            return result;
+        }
+        return data;
     };
 
     // Cancel pending import
@@ -1036,7 +1212,7 @@ export const RightSidebar: React.FC = () => {
             {/* Image Upload Modal for Pending Import */}
             {pendingImport && createPortal(
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl max-w-lg w-full p-6 space-y-4">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
                                 <ImageIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
@@ -1045,35 +1221,113 @@ export const RightSidebar: React.FC = () => {
                         </div>
 
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Your import contains local media references. Please upload the following files:
+                            Your import contains local media references. Please upload the required files:
                         </p>
 
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                            {pendingImport.requiredImages.map(filename => {
-                                const isUploaded = pendingImport.uploadedImages.has(filename);
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                            {pendingImport.mediaGroups.map((group, groupIndex) => {
+                                const hasConflict = group.isConflict;
+                                const refMap = (group as unknown as {uploadedPerRef?: Map<string, string>}).uploadedPerRef;
+
                                 return (
-                                    <div
-                                        key={filename}
-                                        className={clsx(
+                                    <div key={group.filename} className="space-y-1">
+                                        {/* Filename header */}
+                                        <div className={clsx(
                                             "flex items-center justify-between p-2 rounded-lg text-sm",
-                                            isUploaded
+                                            group.uploaded
                                                 ? "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400"
-                                                : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-                                        )}
-                                    >
-                                        <span className="truncate">{filename}</span>
-                                        {isUploaded ? (
-                                            <Check className="w-4 h-4 flex-shrink-0" />
+                                                : hasConflict
+                                                    ? "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+                                                    : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
+                                        )}>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-medium truncate">{group.filename}</span>
+                                                {hasConflict && (
+                                                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">
+                                                        ⚠️ Conflict
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {group.uploaded ? (
+                                                <Check className="w-4 h-4 flex-shrink-0" />
+                                            ) : (
+                                                <X className="w-4 h-4 flex-shrink-0 opacity-50" />
+                                            )}
+                                        </div>
+
+                                        {/* Context: which subjects/topics use this file */}
+                                        {hasConflict ? (
+                                            // For conflicts, show each reference with its own upload
+                                            <div className="ml-4 space-y-1">
+                                                {group.references.map((ref, refIndex) => {
+                                                    const isRefUploaded = refMap?.has(ref.path);
+                                                    return (
+                                                        <div key={ref.path} className="flex items-center justify-between text-xs p-1.5 rounded bg-slate-50 dark:bg-slate-700/50">
+                                                            <span className="text-slate-600 dark:text-slate-400 truncate">
+                                                                {ref.subjectName} → {ref.topicName}
+                                                            </span>
+                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                                {isRefUploaded ? (
+                                                                    <Check className="w-3 h-3 text-green-500" />
+                                                                ) : (
+                                                                    <>
+                                                                        <input
+                                                                            type="file"
+                                                                            accept="image/*,video/*"
+                                                                            onChange={(e) => handleConflictUpload(groupIndex, refIndex, e)}
+                                                                            className="hidden"
+                                                                            id={`conflict-${groupIndex}-${refIndex}`}
+                                                                        />
+                                                                        <label
+                                                                            htmlFor={`conflict-${groupIndex}-${refIndex}`}
+                                                                            className="px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900"
+                                                                        >
+                                                                            Upload
+                                                                        </label>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         ) : (
-                                            <X className="w-4 h-4 flex-shrink-0 text-slate-400" />
+                                            // For non-conflicts, show context with individual upload option
+                                            <div className="ml-4 flex items-center justify-between text-xs p-1.5 rounded bg-slate-50 dark:bg-slate-700/50">
+                                                <span className="text-slate-500 dark:text-slate-400 truncate">
+                                                    {group.references.map(r => `${r.subjectName} → ${r.topicName}`).join(', ')}
+                                                </span>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {group.uploaded ? (
+                                                        <Check className="w-3 h-3 text-green-500" />
+                                                    ) : (
+                                                        <>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*,video/*"
+                                                                onChange={(e) => handleSingleUpload(groupIndex, e)}
+                                                                className="hidden"
+                                                                id={`single-${groupIndex}`}
+                                                            />
+                                                            <label
+                                                                htmlFor={`single-${groupIndex}`}
+                                                                className="px-2 py-0.5 text-xs bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900"
+                                                            >
+                                                                Upload
+                                                            </label>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 );
                             })}
                         </div>
 
+                        {/* Upload stats */}
                         <div className="text-xs text-slate-500 dark:text-slate-400">
-                            {pendingImport.uploadedImages.size} of {pendingImport.requiredImages.length} images uploaded
+                            {pendingImport.mediaGroups.filter(g => g.uploaded).length} of {pendingImport.mediaGroups.length} files ready
                         </div>
 
                         {/* Error/Warning display */}
@@ -1100,16 +1354,18 @@ export const RightSidebar: React.FC = () => {
                             >
                                 Cancel
                             </button>
-                            <button
-                                onClick={() => imageInputRef.current?.click()}
-                                className="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Upload className="w-4 h-4" />
-                                Select Files
-                            </button>
+                            {pendingImport.mediaGroups.some(g => !g.isConflict && !g.uploaded) && (
+                                <button
+                                    onClick={() => imageInputRef.current?.click()}
+                                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    Upload Files
+                                </button>
+                            )}
                         </div>
 
-                        {pendingImport.uploadedImages.size === pendingImport.requiredImages.length && (
+                        {pendingImport.mediaGroups.every(g => g.uploaded) && (
                             <button
                                 onClick={completePendingImport}
                                 className="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center justify-center gap-2"

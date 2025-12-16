@@ -84,8 +84,10 @@ export const useQuizStore = create<QuizState>()(
                         includeMastered: false,
                         queue: [],
                         currentQuestionId: null,
+                        turnCounter: 0,
                     },
                     createdAt: Date.now()
+
                 }
             },
             activeProfileId: DEFAULT_PROFILE_ID,
@@ -502,7 +504,8 @@ export const useQuizStore = create<QuizState>()(
                                 session: {
                                     ...profile.session,
                                     queue: newQueue,
-                                    currentQuestionId: nextQuestionId
+                                    currentQuestionId: nextQuestionId,
+                                    turnCounter: profile.session.turnCounter + 1,
                                 }
                             }
                         }
@@ -627,6 +630,7 @@ export const useQuizStore = create<QuizState>()(
                         includeMastered: false,
                         queue: [],
                         currentQuestionId: null,
+                        turnCounter: 0,
                     },
                     createdAt: Date.now()
                 };
@@ -679,6 +683,7 @@ export const useQuizStore = create<QuizState>()(
                                 includeMastered: false,
                                 queue: [],
                                 currentQuestionId: null,
+                                turnCounter: 0,
                             },
                             createdAt: Date.now()
                         };
@@ -836,13 +841,15 @@ export const useQuizStore = create<QuizState>()(
                         name: 'Default',
                         subjects: persistedState.subjects || [],
                         progress: persistedState.progress || {},
-                        session: persistedState.session || {
+                        session: {
                             subjectId: null,
                             selectedTopicIds: [],
                             mode: 'random',
                             includeMastered: false,
                             queue: [],
                             currentQuestionId: null,
+                            turnCounter: 0,
+                            ...(persistedState.session || {}),
                         },
                         createdAt: Date.now()
                     };
@@ -853,9 +860,21 @@ export const useQuizStore = create<QuizState>()(
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     } as any;
                 }
+
+                // Ensure all profiles have turnCounter in their session
+                if (persistedState.profiles) {
+                    for (const profileId of Object.keys(persistedState.profiles)) {
+                        const profile = persistedState.profiles[profileId];
+                        if (profile.session && typeof profile.session.turnCounter !== 'number') {
+                            profile.session.turnCounter = 0;
+                        }
+                    }
+                }
+
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return persistedState as any as QuizState;
             }
+
         }
     )
 );
