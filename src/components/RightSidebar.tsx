@@ -2,7 +2,7 @@ import React, {useState, useRef} from 'react';
 import {createPortal} from 'react-dom';
 import {useQuizStore} from '../store/useQuizStore';
 import {calculateMastery, getActiveQuestions} from '../utils/quizLogic';
-import {storeMedia, createMediaRef, clearAllMedia} from '../utils/mediaStorage';
+import {storeMedia, createMediaRef, clearAllMedia, getAllMediaIds, deleteMedia, isIndexedDBMedia, extractMediaId} from '../utils/mediaStorage';
 import {
     validateSubjects,
     extractMediaReferencesWithContext,
@@ -40,6 +40,8 @@ export const RightSidebar: React.FC = () => {
     const [deleteProfileInput, setDeleteProfileInput] = useState('');
     const [factoryResetConfirm, setFactoryResetConfirm] = useState(false);
     const [factoryResetInput, setFactoryResetInput] = useState('');
+    const [clearingCache, setClearingCache] = useState(false);
+    const [cacheClearResult, setCacheClearResult] = useState<{removed: number; message: string} | null>(null);
 
 
 
@@ -770,6 +772,68 @@ export const RightSidebar: React.FC = () => {
                                 <Trash2 size={16} />
                                 Reset Subject Progress
                             </button>
+                        )}
+
+                        <button
+                            onClick={async () => {
+                                setClearingCache(true);
+                                setCacheClearResult(null);
+                                try {
+                                    // Get all media IDs in IndexedDB
+                                    const allStoredIds = await getAllMediaIds();
+
+                                    // Collect all media IDs still in use across all profiles
+                                    const usedMediaIds = new Set<string>();
+                                    for (const profile of Object.values(profiles)) {
+                                        for (const subject of profile.subjects) {
+                                            for (const topic of subject.topics) {
+                                                for (const question of topic.questions) {
+                                                    if (question.media && isIndexedDBMedia(question.media)) {
+                                                        usedMediaIds.add(extractMediaId(question.media));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    // Find orphaned media (stored but not used)
+                                    const orphanedIds = allStoredIds.filter(id => !usedMediaIds.has(id));
+
+                                    // Delete orphaned media
+                                    for (const id of orphanedIds) {
+                                        await deleteMedia(id);
+                                    }
+
+                                    setCacheClearResult({
+                                        removed: orphanedIds.length,
+                                        message: orphanedIds.length > 0
+                                            ? `Removed ${orphanedIds.length} unused media file(s)`
+                                            : 'No unused data found'
+                                    });
+                                } catch (err) {
+                                    console.error('Failed to clear cache:', err);
+                                    setCacheClearResult({
+                                        removed: 0,
+                                        message: 'Failed to clear cache'
+                                    });
+                                } finally {
+                                    setClearingCache(false);
+                                }
+                            }}
+                            disabled={clearingCache}
+                            className="w-full flex items-center justify-center gap-2 p-3 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                        >
+                            <Trash2 size={16} />
+                            {clearingCache ? 'Clearing...' : 'Clear Cache'}
+                        </button>
+
+                        {cacheClearResult && (
+                            <div className={`p-2 rounded-lg text-xs text-center ${cacheClearResult.removed > 0
+                                    ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                }`}>
+                                {cacheClearResult.message}
+                            </div>
                         )}
 
                         <button

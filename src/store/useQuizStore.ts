@@ -3,6 +3,7 @@ import {persist, createJSONStorage} from 'zustand/middleware';
 import type {Subject, SessionState, StudyMode, QuestionProgress, Profile} from '../types';
 import {generateQueue, getActiveQuestions, checkAnswer} from '../utils/quizLogic';
 import {indexedDBStorage, clearStoreData, migrateFromLocalStorage} from '../utils/indexedDBStorage';
+import {deleteMedia, isIndexedDBMedia, extractMediaId} from '../utils/mediaStorage';
 import {v4 as uuidv4} from 'uuid';
 
 interface Settings {
@@ -64,6 +65,31 @@ function flattenProgress(subjectProgress: Record<string, Record<string, Question
         Object.assign(flat, topicProgress);
     });
     return flat;
+}
+
+// Extract all IndexedDB media IDs from a subject
+function extractMediaIdsFromSubject(subject: Subject): Set<string> {
+    const mediaIds = new Set<string>();
+    for (const topic of subject.topics) {
+        for (const question of topic.questions) {
+            if (question.media && isIndexedDBMedia(question.media)) {
+                mediaIds.add(extractMediaId(question.media));
+            }
+        }
+    }
+    return mediaIds;
+}
+
+// Extract all IndexedDB media IDs from all profiles
+function extractAllMediaIds(profiles: Record<string, Profile>): Set<string> {
+    const allMediaIds = new Set<string>();
+    for (const profile of Object.values(profiles)) {
+        for (const subject of profile.subjects) {
+            const subjectMediaIds = extractMediaIdsFromSubject(subject);
+            subjectMediaIds.forEach(id => allMediaIds.add(id));
+        }
+    }
+    return allMediaIds;
 }
 
 const DEFAULT_PROFILE_ID = 'default';
@@ -176,38 +202,64 @@ export const useQuizStore = create<QuizState>()(
                 };
             }),
 
-            deleteSubject: (subjectId) => set((state) => {
+            deleteSubject: (subjectId) => {
+                const state = get();
                 const profile = getCurrentProfile(state);
-                const newSubjects = profile.subjects.filter(s => s.id !== subjectId);
+                const subjectToDelete = profile.subjects.find(s => s.id === subjectId);
 
-                // Also remove progress for this subject
-                const newProgress = {...profile.progress};
-                delete newProgress[subjectId];
+                // Extract media IDs from the subject being deleted
+                const mediaToCheck = subjectToDelete ? extractMediaIdsFromSubject(subjectToDelete) : new Set<string>();
 
-                // If we're deleting the current subject, clear the session
-                let newSession = profile.session;
-                if (profile.session.subjectId === subjectId) {
-                    newSession = {
-                        ...profile.session,
-                        subjectId: null,
-                        selectedTopicIds: [],
-                        queue: [],
-                        currentQuestionId: null
+                // Update state synchronously
+                set((state) => {
+                    const currentProfile = getCurrentProfile(state);
+                    const newSubjects = currentProfile.subjects.filter(s => s.id !== subjectId);
+
+                    // Also remove progress for this subject
+                    const newProgress = {...currentProfile.progress};
+                    delete newProgress[subjectId];
+
+                    // If we're deleting the current subject, clear the session
+                    let newSession = currentProfile.session;
+                    if (currentProfile.session.subjectId === subjectId) {
+                        newSession = {
+                            ...currentProfile.session,
+                            subjectId: null,
+                            selectedTopicIds: [],
+                            queue: [],
+                            currentQuestionId: null
+                        };
+                    }
+
+                    return {
+                        profiles: {
+                            ...state.profiles,
+                            [state.activeProfileId]: {
+                                ...currentProfile,
+                                subjects: newSubjects,
+                                progress: newProgress,
+                                session: newSession
+                            }
+                        }
                     };
-                }
+                });
 
-                return {
-                    profiles: {
-                        ...state.profiles,
-                        [state.activeProfileId]: {
-                            ...profile,
-                            subjects: newSubjects,
-                            progress: newProgress,
-                            session: newSession
+                // Clean up orphaned media asynchronously (after state update)
+                if (mediaToCheck.size > 0) {
+                    // Get updated state after deletion
+                    const updatedState = get();
+                    const stillInUse = extractAllMediaIds(updatedState.profiles);
+
+                    // Delete media that's no longer used anywhere
+                    for (const mediaId of mediaToCheck) {
+                        if (!stillInUse.has(mediaId)) {
+                            deleteMedia(mediaId).catch(err => {
+                                console.error(`Failed to delete orphaned media ${mediaId}:`, err);
+                            });
                         }
                     }
-                };
-            }),
+                }
+            },
 
             startSession: (subjectId) => {
                 set((state) => {

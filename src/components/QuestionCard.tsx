@@ -176,9 +176,7 @@ export const QuestionCard: React.FC<Props> = ({question}) => {
                                     <img
                                         src={resolvedMediaUrl}
                                         alt="Question illustration"
-                                        className="max-w-full max-h-64 rounded-lg border border-slate-200 dark:border-slate-700 object-contain mx-auto cursor-pointer hover:opacity-90 transition-opacity"
-                                        onClick={() => window.open(resolvedMediaUrl, '_blank')}
-                                        title="Click to view full size"
+                                        className="max-w-full max-h-64 rounded-lg border border-slate-200 dark:border-slate-700 object-contain mx-auto"
                                     />
                                 </div>
                             );
