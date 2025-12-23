@@ -234,7 +234,7 @@ When importing JSON with local media references, a modal will appear listing the
 
 ### LaTeX Support
 
-You can include LaTeX mathematical notation in prompts, choices, explanations, and answers using Anki-style delimiters:
+You can include LaTeX mathematical notation in prompts, choices, explanations, and answers:
 
 - **Inline math**: Use `\(...\)` syntax, e.g., `"The formula \(E = mc^2\) describes..."`
 - **Block math**: Use `\[...\]` syntax for centered equations
