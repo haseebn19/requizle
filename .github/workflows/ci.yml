@@ -52,7 +52,7 @@ jobs:
         
     - name: Coverage Summary
       run: |
-        echo "## 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+        echo "## Test Coverage Report" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
         echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
@@ -65,7 +65,7 @@ jobs:
         echo "| Functions | ${FUNCTIONS}% |" >> $GITHUB_STEP_SUMMARY
         echo "| Lines | ${LINES}% |" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📁 **Full HTML report available as artifact: coverage-report**" >> $GITHUB_STEP_SUMMARY
+        echo "**Full HTML report available as artifact: coverage-report**" >> $GITHUB_STEP_SUMMARY
 
   build:
     name: Build
